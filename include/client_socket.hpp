@@ -1,4 +1,5 @@
 #include <exception>
+#include <memory>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <string>
@@ -20,10 +21,15 @@ public:
   addrinfo_fail(std::string arg) : cause(std::move(arg)) {}
   const char *what() const noexcept override { return cause.c_str(); }
 };
+class connection_failed : public std::exception {
+public:
+  const char *what() const noexcept override { return "couldn't connect\n"; }
+};
 
 class client_socket {
 private:
-  int sock;
+  std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> address;
+  int sock = 0;
 
 public:
   client_socket(std::string hostname, std::string port);
