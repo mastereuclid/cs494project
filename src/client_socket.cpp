@@ -1,14 +1,13 @@
 #include "client_socket.hpp"
 #include <cstring>
-#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 client_socket::client_socket(std::string hostname, std::string port)
     : address(nullptr, freeaddrinfo) {
-  addrinfo hints;
   addrinfo *temp = nullptr;
+  addrinfo hints;
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_UNSPEC; /* Allow IPv4 or IPv6 */
   hints.ai_socktype = SOCK_STREAM;
@@ -46,9 +45,6 @@ client_socket::client_socket(std::string hostname, std::string port)
 
 client_socket::~client_socket() { close(sock); }
 
-const char *bad_hostname::what() const noexcept {
-  return "couldn't resolve hostname\n";
-}
-const char *sock_failed::what() const noexcept {
-  return "sock failed to open\n";
+void client_socket::send(std::string message) {
+  ::send(sock, message.c_str(), message.length(), 0);
 }

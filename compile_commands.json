@@ -1,12 +1,17 @@
 [
 {
   "directory": "/home/euclid/Dropbox/cs/494/cs494project/build",
-  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include -isystem /usr/local/include    -W -Wall -Werror -std=gnu++14 -o CMakeFiles/client_socket_test.dir/tests/socket_test.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/tests/socket_test.cpp",
+  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include  -g   -W -Wall -Werror -std=gnu++14 -o CMakeFiles/server_socket.dir/src/server_socket.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/src/server_socket.cpp",
+  "file": "/home/euclid/Dropbox/cs/494/cs494project/src/server_socket.cpp"
+},
+{
+  "directory": "/home/euclid/Dropbox/cs/494/cs494project/build",
+  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include -isystem /usr/local/include  -g   -W -Wall -Werror -std=gnu++14 -o CMakeFiles/socket_test.dir/tests/socket_test.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/tests/socket_test.cpp",
   "file": "/home/euclid/Dropbox/cs/494/cs494project/tests/socket_test.cpp"
 },
 {
   "directory": "/home/euclid/Dropbox/cs/494/cs494project/build",
-  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include    -W -Wall -Werror -std=gnu++14 -o CMakeFiles/client_socket.dir/src/client_socket.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/src/client_socket.cpp",
+  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include -isystem /usr/local/include  -g   -W -Wall -Werror -std=gnu++14 -o CMakeFiles/client_socket.dir/src/client_socket.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/src/client_socket.cpp",
   "file": "/home/euclid/Dropbox/cs/494/cs494project/src/client_socket.cpp"
 }
 ]
