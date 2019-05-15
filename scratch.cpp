@@ -39,7 +39,7 @@ public:
 
 void testserver() {
   addrinfo hints, *temp;
-  int sock = 0, clientsock = 0;
+  int sock = 0, clientsock = 0, clientsock2 = 0;
   std::string port = std::string("3030");
   std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> address(nullptr,
                                                              freeaddrinfo);
@@ -77,14 +77,23 @@ void testserver() {
     break; // we have opened a sock and bound
   }
   listen(sock, 1);
-  sockaddr clientaddr;
+  sockaddr clientaddr, clientaddr2;
   memset(&clientaddr, 0, sizeof(struct addrinfo));
+  memset(&clientaddr2, 0, sizeof(struct addrinfo));
   socklen_t client_address_size = sizeof(clientaddr);
+  socklen_t client_address_size2 = sizeof(clientaddr2);
   clientsock = accept(sock, &clientaddr, &client_address_size);
-  char buffer[1024];
-  int length = recv(clientsock, &buffer, 1024, 0);
-  if (length != -1)
-    puts(buffer);
+  clientsock2 = accept(sock, &clientaddr2, &client_address_size2);
+  // char buffer[1024];
+  // int length = recv(clientsock, &buffer, 1024, 0);
+  // if (length != -1)
+  //   puts(buffer);
+  const char *msg = "what happens when data is sent to the listening socket";
+  int len = strlen(msg), bytesent = 0;
+  bytesent = send(clientsock, msg, len, 0);
+  close(sock);
+  close(clientsock);
+  close(clientsock2);
 }
 
 int main() {

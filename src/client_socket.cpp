@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+constexpr uint buffer_size = 1024; // A gloabal. Am I insane? Its const...
 client_socket::client_socket(std::string hostname, std::string port)
     : address(nullptr, freeaddrinfo) {
   addrinfo *temp = nullptr;
@@ -33,6 +33,7 @@ client_socket::client_socket(std::string hostname, std::string port)
       close(sock);
       continue; // try the next address
     }
+    // bla
     // at this point we have created a sock and connected to it so we can exit
     // the loop
     break;
@@ -45,6 +46,18 @@ client_socket::client_socket(std::string hostname, std::string port)
 
 client_socket::~client_socket() { close(sock); }
 
-void client_socket::send(std::string message) {
+void client_socket::send(std::string message) const {
   ::send(sock, message.c_str(), message.length(), 0);
+}
+std::string client_socket::receive() const {
+  // int recv(int sockfd, void *buf, int len, int flags);
+  char buffer[buffer_size];
+  int bytes_received = 0;
+  bytes_received = recv(sock, &buffer, buffer_size, 0);
+  if (bytes_received == -1) {
+    // report the errno that happened
+  } else if (bytes_received == 0) {
+    // the socket closed should probably throw
+  }
+  return std::string(buffer, bytes_received);
 }

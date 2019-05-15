@@ -2,6 +2,8 @@
 #include <catch2/catch.hpp>
 #include <client_socket.hpp>
 #include <server_socket.hpp>
+#include <string>
+#include <thread>
 // this was a nice starter test but I'm going to start throwing
 // an exception on connection refusal and I can't test a server and client at
 // the same time yet
@@ -21,9 +23,22 @@ TEST_CASE("connect to google.com", "[client]") {
 
   REQUIRE_NOTHROW(client_socket("google.com", "80"));
 }
-TEST_CASE("connect to self") {
-  client_socket a("localhost", "3030");
-  a.send("this is a message");
-}
 
-// TEST_CASE("a socket server class", "[server]") { server_socket a; }
+TEST_CASE("send a message to myself", "[client][server]") {
+  // threads... yay
+  std::string msg("message to be sent");
+  std::string recvd;
+  std::thread server([&msg]() {
+    server_socket server("3030");
+    server.listen();
+    connection client = server.accept();
+    client.send(msg);
+  });
+  std::thread client([&recvd]() {
+    client_socket client("localhost", "3030");
+    recvd = client.receive();
+  });
+  server.join();
+  client.join();
+  REQUIRE(msg == recvd);
+}

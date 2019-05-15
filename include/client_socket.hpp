@@ -13,8 +13,8 @@ private:
 
 public:
   client_socket(std::string hostname, std::string port);
-  void send(std::string);
-  std::string recieve();
+  void send(std::string) const;
+  std::string receive() const;
   client_socket(const client_socket &) = delete;
   client_socket &operator=(const client_socket &) = delete;
   // need to default the move operators

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+constexpr uint buffer_size = 1024; // A gloabal. Am I insane? Its const...
 server_socket::server_socket(std::string port) {
   addrinfo hints, *temp;
   std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> address(nullptr,
@@ -32,5 +32,35 @@ server_socket::server_socket(std::string port) {
     break; // we have opened a sock and bound
   }
 }
+server_socket::server_socket(int sock) : sock(sock) {}
+connection server_socket::accept() const {
+  auto their_address = std::make_unique<sockaddr>();
+  socklen_t size = sizeof(sockaddr);
+  int con = ::accept(sock, their_address.get(), &size);
+  if (con == -1)
+    throw accept_fail();
+  return connection(con, std::move(their_address));
+}
+
 server_socket::~server_socket() { close(sock); }
-void server_socket::listen() {}
+void server_socket::listen() const { ::listen(sock, 10); }
+
+connection::~connection() { close(sock); }
+connection::connection(int sock, std::unique_ptr<sockaddr> their_address)
+    : sock(sock), address(std::move(their_address)) {}
+
+void connection::send(std::string msg) const {
+  int rv = ::send(sock, msg.c_str(), msg.length(), 0);
+  if (rv == -1)
+    throw "send failed";
+  if (unsigned long bytesent = rv; bytesent < msg.length()) {
+    // send the rest of the data...
+  }
+}
+std::string connection::receive() const {
+  char buffer[buffer_size];
+  int rv = ::recv(sock, &buffer, buffer_size, 0);
+  if (rv == -1)
+    throw "receive failed:";
+  return std::string(buffer, rv);
+}
