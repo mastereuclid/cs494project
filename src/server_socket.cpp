@@ -52,7 +52,7 @@ connection::connection(int sock, std::unique_ptr<sockaddr> their_address)
 void connection::send(std::string msg) const {
   int rv = ::send(sock, msg.c_str(), msg.length(), 0);
   if (rv == -1)
-    throw "send failed";
+    throw send_fail();
   if (unsigned long bytesent = rv; bytesent < msg.length()) {
     // send the rest of the data...
   }
@@ -61,6 +61,9 @@ std::string connection::receive() const {
   char buffer[buffer_size];
   int rv = ::recv(sock, &buffer, buffer_size, 0);
   if (rv == -1)
-    throw "receive failed:";
+    throw receive_fail();
+  else if (rv == 0) {
+    throw connection_closed();
+  }
   return std::string(buffer, rv);
 }

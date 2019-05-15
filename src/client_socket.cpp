@@ -33,7 +33,6 @@ client_socket::client_socket(std::string hostname, std::string port)
       close(sock);
       continue; // try the next address
     }
-    // bla
     // at this point we have created a sock and connected to it so we can exit
     // the loop
     break;
@@ -55,9 +54,9 @@ std::string client_socket::receive() const {
   int bytes_received = 0;
   bytes_received = recv(sock, &buffer, buffer_size, 0);
   if (bytes_received == -1) {
-    // report the errno that happened
+    throw receive_fail();
   } else if (bytes_received == 0) {
-    // the socket closed should probably throw
+    throw connection_closed();
   }
   return std::string(buffer, bytes_received);
 }

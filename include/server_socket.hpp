@@ -15,7 +15,9 @@ private:
 public:
   server_socket(std::string port);
   ~server_socket();
-  // I need to defualt the move constructors
+  server_socket(server_socket &&) = default;
+  server_socket(const server_socket &) = delete;
+  server_socket &operator=(const server_socket &) = delete;
   void send(std::string /*, needs a destination, maybe not */);
   std::string recieve();
   void listen() const;
