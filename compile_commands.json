@@ -11,6 +11,16 @@
 },
 {
   "directory": "/home/euclid/Dropbox/cs/494/cs494project/build",
+  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include -isystem /usr/local/include  -g   -W -Wall -Werror -Wextra -std=gnu++17 -o CMakeFiles/irc_msg_test.dir/tests/irc_msg_test.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/tests/irc_msg_test.cpp",
+  "file": "/home/euclid/Dropbox/cs/494/cs494project/tests/irc_msg_test.cpp"
+},
+{
+  "directory": "/home/euclid/Dropbox/cs/494/cs494project/build",
+  "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include  -g   -W -Wall -Werror -Wextra -std=gnu++17 -o CMakeFiles/irc_msg.dir/src/irc_msg.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/src/irc_msg.cpp",
+  "file": "/home/euclid/Dropbox/cs/494/cs494project/src/irc_msg.cpp"
+},
+{
+  "directory": "/home/euclid/Dropbox/cs/494/cs494project/build",
   "command": "/usr/bin/c++   -I/home/euclid/Dropbox/cs/494/cs494project/include -isystem /usr/local/include  -g   -W -Wall -Werror -Wextra -std=gnu++14 -o CMakeFiles/client_socket.dir/src/client_socket.cpp.o -c /home/euclid/Dropbox/cs/494/cs494project/src/client_socket.cpp",
   "file": "/home/euclid/Dropbox/cs/494/cs494project/src/client_socket.cpp"
 }

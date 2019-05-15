@@ -19,10 +19,18 @@ add_library(server_socket src/server_socket.cpp)
 target_compile_features(server_socket PRIVATE cxx_noexcept)
 target_compile_features(server_socket PUBLIC cxx_std_17)
 
+add_library(irc_msg src/irc_msg.cpp)
+target_compile_features(irc_msg PRIVATE cxx_noexcept)
+target_compile_features(irc_msg PUBLIC cxx_std_17)
+
 add_executable(socket_test tests/socket_test.cpp)
 target_link_libraries(client_socket Catch2::Catch2)
 target_link_libraries(socket_test client_socket)
 target_link_libraries(socket_test server_socket)
 target_link_libraries (socket_test ${CMAKE_THREAD_LIBS_INIT})
 
+add_executable(irc_msg_test tests/irc_msg_test.cpp)
+target_link_libraries(irc_msg_test Catch2::Catch2)
+target_link_libraries(irc_msg_test irc_msg)
 catch_discover_tests(socket_test)
+catch_discover_tests(irc_msg_test)
