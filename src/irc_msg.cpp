@@ -1,4 +1,5 @@
 #include "irc_msg.hpp"
+#include <iterator>
 #include <memory>
 using std::string;
 /*
@@ -18,10 +19,12 @@ irc_msg::irc_msg() : my_type(type::CONTRUCTED) {}
 irc_msg::irc_msg(std::string &&raw)
     : line(std::move(raw)), my_type(type::PARSED) {
   // check for prefix
-  auto iter = line.begin();
-  if (*iter == ':') {
+  // auto iter = line.begin();
+  string remainder = line;
+  if (line.at(0) == ':') {
     // we have a prefix
     std::string prefix = line.substr(1, line.find_first_of(" ") - 1);
+    remainder = line.substr(prefix.length() + 1);
     if (auto pos = prefix.find('!'); pos == std::string::npos) {
       my_prefix = prefix_type::SERVERNAME;
       // didn't find a ! so we have a servername
@@ -40,9 +43,34 @@ irc_msg::irc_msg(std::string &&raw)
   } else {
     my_prefix = prefix_type::NONE;
   }
+  // ok prefix is done what next?
+  // iter = line.find_first_of(' ');
+  // I want to advance the iterator until we are no longer pointing at spaces.
+  auto command_start = remainder.find_first_not_of(' ');
+  auto command_end = remainder.find_first_of(' ', command_start);
+  this->cmd = remainder.substr(command_start, command_end - command_start);
+  remainder = remainder.substr(command_end + 1);
+  remainder = remainder.substr(remainder.find_first_not_of(' '));
+  ;
+  // now the middle and trailing
+  auto colon = remainder.find(':');
+  if (colon == string::npos) {
+    // no trailing data
+    middle = remainder;
+  } else {
+    middle = remainder.substr(0, colon - 1);
+    trailing = remainder.substr(colon + 1);
+  }
 }
 
-const std::string &irc_msg::from_nick() { return prefix_nick; }
-const string &irc_msg::from_user() { return prefix_user; }
-const string &irc_msg::from_host() { return prefix_host; }
-const irc_msg::prefix_type &irc_msg::from_type() { return my_prefix; }
+const std::string &irc_msg::from_nick() const { return prefix_nick; }
+const string &irc_msg::from_user() const { return prefix_user; }
+const string &irc_msg::from_host() const { return prefix_host; }
+const irc_msg::prefix_type &irc_msg::from_type() const { return my_prefix; }
+const string &irc_msg::command() const { return cmd; }
+const string &irc_msg::params() const { return middle; }
+const string &irc_msg::data() const { return trailing; }
+namespace irc {
+// I think I want to make a bunch of free form irc msg generator functions in a
+// name space
+}

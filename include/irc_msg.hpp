@@ -5,10 +5,13 @@ public:
   enum class prefix_type { NONE, SERVERNAME, USER };
   irc_msg(std::string &&line);
   irc_msg();
-  const std::string &from_nick();
-  const std::string &from_user();
-  const std::string &from_host();
-  const prefix_type &from_type();
+  const std::string &from_nick() const;
+  const std::string &from_user() const;
+  const std::string &from_host() const;
+  const prefix_type &from_type() const;
+  const std::string &command() const;
+  const std::string &params() const;
+  const std::string &data() const;
 
 private:
   std::string line;
@@ -24,7 +27,7 @@ private:
 
   //<command> ::= <letter> { <letter> } | <number> <number> <number>
   enum class command_type { WORD, DIGITS };
-  std::string command;
+  std::string cmd;
 
   //<params> ::= <SPACE> [ ’:’ <trailing> | <middle> <params> ]
   // enum class params_type { MIDDLE, TRAILING };
