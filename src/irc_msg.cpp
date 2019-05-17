@@ -14,10 +14,9 @@ using std::string;
  NUL or CR or LF>
 <crlf> ::= CR LF
 */
-irc_msg::irc_msg() : my_type(type::CONTRUCTED) {}
+// irc_msg::irc_msg() {}
 
-irc_msg::irc_msg(std::string &&raw)
-    : line(std::move(raw)), my_type(type::PARSED) {
+irc_msg::irc_msg(std::string &&raw) : line(std::move(raw)) {
   // check for prefix
   // auto iter = line.begin();
   string remainder = line;
@@ -61,7 +60,22 @@ irc_msg::irc_msg(std::string &&raw)
     middle = remainder.substr(0, colon - 1);
     trailing = remainder.substr(colon + 1);
   }
+  split(middle);
 }
+// a list of words
+void irc_msg::split(string middle) {
+  // split a string by spaces and place each part into a vector
+  uint loop = 0;
+  for (auto end = middle.find(' ', 0) - 1, start = 0UL; start != string::npos;
+       start = middle.find_first_not_of(' ', end + 1),
+            end = middle.find(' ', start)) {
+    mparams.push_back(middle.substr(start, end - start + 1));
+    loop++;
+  }
+  num_params = loop;
+}
+
+const mparams_t &irc_msg::middleparam() const { return mparams; }
 
 const std::string &irc_msg::from_nick() const { return prefix_nick; }
 const string &irc_msg::from_user() const { return prefix_user; }

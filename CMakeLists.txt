@@ -11,6 +11,11 @@ include(Catch)
 find_program( MEMORYCHECK_COMMAND valgrind )
 set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 include_directories(include)
+
+add_library(irc_server src/irc_server.cpp)
+target_compile_features(irc_server PRIVATE cxx_noexcept)
+target_compile_features(irc_server PUBLIC cxx_std_17)
+
 add_library(client_socket src/client_socket.cpp)
 target_compile_features(client_socket PRIVATE cxx_noexcept)
 target_compile_features(client_socket PUBLIC cxx_std_14)

@@ -2,7 +2,7 @@
 #include "irc_msg.hpp"
 #include <catch2/catch.hpp>
 using std::string;
-TEST_CASE("irc_msg exists") { irc_msg(); }
+// TEST_CASE("irc_msg exists") { irc_msg(); }
 
 TEST_CASE("parse a privmsg", "[parse]") {
   std::string line(
@@ -14,6 +14,7 @@ TEST_CASE("parse a privmsg", "[parse]") {
   CHECK(msg.from_host() == string("c-67-189-121-140.hsd1.or.comcast.net"));
   CHECK(msg.from_type() == irc_msg::prefix_type::USER);
   CHECK(msg.command() == string("PRIVMSG"));
+  CHECK(msg.data() == string("hello there I'm euclid3"));
 }
 
 TEST_CASE("parse a nick change", "[parse]") {}
@@ -24,6 +25,7 @@ TEST_CASE("who command", "[parse]") {
   REQUIRE(msg.from_type() == irc_msg::prefix_type::NONE);
   REQUIRE(msg.command() == string("WHO"));
   REQUIRE(msg.params() == string("#my_own_test_channel"));
+  REQUIRE(msg.middleparam().at(0) == string("#my_own_test_channel"));
 }
 
 //:irc.Prison.NET PONG irc.Prison.NET :LAG1557902350392289

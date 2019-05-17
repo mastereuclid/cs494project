@@ -11,5 +11,10 @@ class irc_server {
 
   // a function structure so I can add a function to an event would be nice
 
-  // I need an irc parser...
+public:
+  irc_server();
+  irc_server(std::string port);
+
+private:
+  server_socket listener;
 };
