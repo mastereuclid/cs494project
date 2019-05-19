@@ -28,11 +28,15 @@ TEST_CASE("send a message to myself", "[client][server]") {
   // threads... yay
   std::string msg("message to be sent");
   std::string recvd;
-  std::thread server([&msg]() {
+  std::string host;
+
+  std::thread server([&msg, &host]() {
     server_socket server("3030");
     server.listen();
     connection client = server.accept();
-    client.send(msg);
+    auto client2 = std::move(client);
+    client2.send(msg);
+    host = client2.hostname();
   });
   std::thread client([&recvd]() {
     client_socket client("localhost", "3030");
@@ -41,4 +45,5 @@ TEST_CASE("send a message to myself", "[client][server]") {
   server.join();
   client.join();
   REQUIRE(msg == recvd);
+  REQUIRE(host == std::string("localhost"));
 }

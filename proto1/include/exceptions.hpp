@@ -3,6 +3,10 @@
 #ifndef exceptions_h
 #define exceptions_h
 
+class nick_taken : std::exception {
+  const char *what() const noexcept override { return "nick already in use\n"; }
+};
+
 class addrinfo_fail : public std::exception {
   std::string cause;
 

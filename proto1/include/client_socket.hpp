@@ -10,6 +10,8 @@ class client_socket {
 private:
   std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> address;
   int sock = 0;
+  bool moved = false;
+  bool closed = false;
 
 public:
   client_socket(std::string hostname, std::string port);
@@ -17,6 +19,8 @@ public:
   std::string receive() const;
   client_socket(const client_socket &) = delete;
   client_socket &operator=(const client_socket &) = delete;
+  void close();
+  client_socket(client_socket &&other);
   // need to default the move operators
   ~client_socket();
 };

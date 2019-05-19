@@ -7,6 +7,28 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+// condition_variable::wait (with predicate)
+#include <chrono>
+#include <condition_variable> // std::condition_variable
+#include <iostream>           // std::cout
+#include <mutex>              // std::mutex, std::unique_lock
+#include <thread>             // std::thread, std::this_thread::yield
+std::mutex mtx;
+std::condition_variable cv;
+
+int cargo = 0;
+bool shipment_available() { return cargo != 0; }
+
+void consume(int n) {
+  for (int i = 0; i < n; ++i) {
+    std::unique_lock<std::mutex> lck(mtx);
+    cv.wait(lck, shipment_available);
+    // consume:
+    std::cout << cargo << '\n';
+    cargo = 0;
+  }
+}
+
 class addressdeleter {
 public:
   void operator()(addrinfo *ad) { freeaddrinfo(ad); }
@@ -96,7 +118,47 @@ void testserver() {
   close(clientsock2);
 }
 
-int main() {
-  testserver();
-  return 0;
+void sizetest() {
+  // char bla[1024];
+  printf("%lu", sizeof(char[1024]));
 }
+class dest_test {
+public:
+  dest_test() {}
+  ~dest_test() { std::cout << "dest_test\n"; }
+};
+
+class engine {
+public:
+  engine() {
+    // std::thread(&engine::run, this).detach();
+    t = std::thread(&engine::run, this);
+    // t.detach();
+  }
+  ~engine() { t.join(); }
+  void run() {
+    dest_test b;
+    for (; a < 100; a++) {
+      if (a % 5 == 0)
+        std::cout << std::this_thread::get_id() << " " << a << '\n';
+      std::this_thread::yield();
+    }
+  }
+
+private:
+  std::thread t;
+  size_t a = 2;
+};
+void threadtest() {
+  engine enginetest;
+  // std::this_thread::yield();
+  engine eng2;
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  for (volatile size_t i = 0; i < 20; i++) {
+
+    std::this_thread::yield();
+    std::cout << " I can still output here right...\n";
+  }
+}
+
+int main() { threadtest(); }

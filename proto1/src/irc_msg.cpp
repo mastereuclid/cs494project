@@ -87,4 +87,12 @@ const string &irc_msg::data() const { return trailing; }
 namespace irc {
 // I think I want to make a bunch of free form irc msg generator functions in a
 // name space
+namespace request {
+// all the client sending functions will be here
+// lots to do here
 }
+namespace response {
+// all the server response functions will be here
+// lots to do here
+}
+} // namespace irc

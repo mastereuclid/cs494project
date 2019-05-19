@@ -44,8 +44,15 @@ connection server_socket::accept() const {
 
 server_socket::~server_socket() { close(sock); }
 void server_socket::listen() const { ::listen(sock, 10); }
-
-connection::~connection() { close(sock); }
+connection::connection(connection &&other)
+    : sock(other.sock), hostcached(other.hostcached),
+      host(std::move(other.host)), address(std::move(other.address)) {
+  other.moved = true;
+}
+connection::~connection() {
+  if (!moved && !running)
+    ::close(sock);
+}
 connection::connection(int sock, std::unique_ptr<sockaddr> their_address)
     : sock(sock), address(std::move(their_address)) {}
 
@@ -66,4 +73,39 @@ std::string connection::receive() const {
     throw connection_closed();
   }
   return std::string(buffer, rv);
+}
+const std::string &connection::hostname() const {
+  // int getpeername(int sockfd, struct sockaddr *addr, int *addrlen);
+  if (hostcached)
+    return host;
+  auto addr = std::make_unique<sockaddr>();
+  // socklen_t addrsize = sizeof(sockaddr);
+  auto service = std::make_unique<char[]>(1024);
+  auto gethost = std::make_unique<char[]>(1024);
+  // int rv = getpeername(sock, addr.get(), &addrsize);
+  // if (rv == -1)
+  // throw "getpeername failed";
+  int rv = getnameinfo(address.get(), sizeof(sockaddr), gethost.get(), 1024,
+                       service.get(), 1024, 0);
+  if (rv == -1)
+    throw "getnameinfo failed";
+  /* I thought about getting the client's IP address but its not worth it
+char ipstr[INET6_ADDRSTRLEN];
+if (addr.get()->sa_family == AF_INET) {
+  inet_ntop(AF_INET, addr.get()->sin_add, ipstr, sizeof ipstr);
+} else { // AF_INET6
+  inet_ntop(AF_INET6, addr.get()->sin6_addr, ipstr, sizeof ipstr);
+}
+*/
+  host = std::string(gethost.get());
+  hostcached = true;
+  return host;
+}
+void connection::close() {
+  ::close(sock);
+  running = false;
+}
+
+bool operator<(const connection &lhs, const connection &rhs) {
+  return lhs.sock < rhs.sock;
 }

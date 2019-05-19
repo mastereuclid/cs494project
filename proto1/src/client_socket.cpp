@@ -30,7 +30,7 @@ client_socket::client_socket(std::string hostname, std::string port)
       continue; // try the next address
     if (connect(sock, try_this_address->ai_addr,
                 try_this_address->ai_addrlen) == -1) {
-      close(sock);
+      ::close(sock);
       continue; // try the next address
     }
     // at this point we have created a sock and connected to it so we can exit
@@ -43,7 +43,19 @@ client_socket::client_socket(std::string hostname, std::string port)
     throw connection_failed();
 }
 
-client_socket::~client_socket() { close(sock); }
+client_socket::~client_socket() {
+  if (!moved && !closed)
+    ::close(sock);
+}
+
+client_socket::client_socket(client_socket &&other)
+    : address(std::move(other.address)) {
+  other.moved = true;
+}
+void client_socket::close() {
+  ::close(sock);
+  closed = true;
+}
 
 void client_socket::send(std::string message) const {
   ::send(sock, message.c_str(), message.length(), 0);
