@@ -33,6 +33,7 @@ server_socket::server_socket(std::string port) {
   }
 }
 server_socket::server_socket(int sock) : sock(sock) {}
+
 connection server_socket::accept() const {
   auto their_address = std::make_unique<sockaddr>();
   socklen_t size = sizeof(sockaddr);
