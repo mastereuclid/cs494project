@@ -9,6 +9,7 @@
 using namespace irc::server;
 using guard = std::lock_guard<std::mutex>;
 using nickptr = std::shared_ptr<nick>;
+using msgptr = std::unique_ptr<irc_msg>;
 //////////////// data structures  //////////////////
 // nicks
 std::mutex nickex;
@@ -37,36 +38,39 @@ void limbo(socket &&sock) {
     num_in_limbo++;
     std::cout << "connection in limbo" << std::endl;
     std::unique_lock<std::mutex> mylock(nickex, std::defer_lock);
-    std::string nick;
-    std::string user;
+    std::string command_nick("NICK");
+    std::string command_user("USER");
+    std::string nickname;
+    std::string username;
     std::string realname;
-    auto time_limit =
-        std::chrono::system_clock::now() + std::chrono::seconds(10);
-    for (uint attempts = 0;
-         attempts < 4 && std::chrono::system_clock::now() < time_limit;
-         attempts++) {
+    nickptr connection = std::make_shared<irc::server::nick>(std::move(sock));
+    // this loop doesn't check a number of attempts, might add later
+    for (auto time_limit =
+             std::chrono::system_clock::now() + std::chrono::seconds(15);
+         std::chrono::system_clock::now() < time_limit;) {
       // check for incoming
-
-      std::string msg = sock.receive();
-      std::cout << msg << std::endl;
-      irc_msg line(std::move(msg));
-      // std::cout << line.command() << *line.middleparam().begin() <<
-      // std::endl;
-      if (line.command() == std::string("NICK")) {
-        nick = *line.middleparam().begin();
-      } else if (line.command() == std::string("USER")) {
-        user = *line.middleparam().begin();
-        realname = line.data();
-      }
-      if (!nick.empty() && !user.empty() && !realname.empty()) {
-        mylock.lock();
-        if (nicks.count(nick) > 0) {
-          std::cout << "nick taken" << std::endl;
-        } else {
-          // insert in nicks
-          std::cout << "nick accepted" << std::endl;
+      if (connection->msg_queue_empty()) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        continue;
+      } else {
+        while (!connection->msg_queue_empty()) {
+          // get all the messages in the queue. See if they are a NICK or USER
+          // silently ignore other types or nicks that are already taken
+          msgptr msg = connection->get_next_irc_msg_ptr();
+          if (msg->command() == command_nick) {
+            if (msg->num_of_params() == 1) {
+              nickname = msg->middleparam().at(0);
+            }
+          } else if (msg->command() == command_user) {
+            if (msg->num_of_params() == 1) {
+              username = msg->middleparam().at(0);
+            }
+          }
+          if (!nickname.empty() && !username.empty()) {
+            // check if username/nickname combo is available
+            // if not should probably unset nickname
+          }
         }
-        mylock.unlock();
       }
     }
   } catch (const std::exception &e) {
@@ -94,7 +98,6 @@ server::~server() {
   if (accept_thread.joinable())
     accept_thread.join();
 }
-nick::nick(::socket &&sock) : irc::protocol(std::move(sock)) {}
 
 uint server::conn_count() const {
   std::lock_guard<std::mutex> lock1(nickex);
@@ -118,3 +121,5 @@ void server::engine() {
     std::cout << "server engine exception: " << e.what();
   }
 }
+
+nick::nick(::socket &&sock) : protocol(std::move(sock)) {}

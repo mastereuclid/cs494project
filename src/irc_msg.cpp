@@ -69,13 +69,14 @@ void irc_msg::split(string middle) {
   auto start = middle.find_first_not_of(' ');
   auto space = middle.find_first_of(' ', start);
   while (start != string::npos) {
+    num_params++;
     mparams.emplace_back(middle.substr(start, space - start));
     start = middle.find_first_not_of(' ', space);
     space = middle.find_first_of(' ', start);
   }
-
-  // num_params = loop;
 }
+
+uint irc_msg::num_of_params() const { return num_params; }
 
 const mparams_t &irc_msg::middleparam() const { return mparams; }
 

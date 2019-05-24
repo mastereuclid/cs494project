@@ -14,6 +14,7 @@ public:
   const std::string &params() const;
   const std::string &data() const;
   const mparams_t &middleparam() const;
+  uint num_of_params() const;
 
 private:
   std::string line;
