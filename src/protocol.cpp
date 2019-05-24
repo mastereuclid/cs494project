@@ -1,7 +1,7 @@
 #include "protocol.hpp"
 using namespace irc;
-
-void protocol::packet(std::string packet) {
+#include <iostream>
+void protocol::packet(std::string &&packet) {
   storage.append(packet);
   // looks for a delimiter
   auto term = storage.find("\r\n");
@@ -11,12 +11,16 @@ void protocol::packet(std::string packet) {
     return;
   } else {
     // parse_next_packet(term);
-    auto bla = parse_next_packet(term);
-    fifo.push(std::make_unique<irc_msg>(std::move(bla)));
+    // auto bla = parse_next_packet(term);
+    fifo.push(std::make_unique<irc_msg>(parse_next_packet(term)));
+    for (auto term = storage.find("\r\n"); term != std::string::npos;
+         term = storage.find("\r\n")) {
+      fifo.push(std::make_unique<irc_msg>(parse_next_packet(term)));
+    }
   }
 }
 
-std::unique_ptr<irc_msg> protocol::get_next_msg() {
+std::unique_ptr<irc_msg> protocol::get_next_irc_msg_ptr() {
   if (fifo.empty())
     return std::unique_ptr<irc_msg>(nullptr);
   return fifo.pop();
@@ -39,3 +43,40 @@ std::string protocol::parse_next_packet(size_t pos) {
 protocol::protocol() {}
 
 const std::string &protocol::get_storage() { return storage; }
+
+bool protocol::msg_queue_empty() const {
+  bool test = fifo.empty();
+  return test;
+}
+void protocol::launch_receiving_thread() {
+  iothread = std::thread(&protocol::receive_engine, this);
+}
+void protocol::close() {
+  disconnected = true;
+  socket::close();
+}
+
+protocol::protocol(socket &&sock) : socket(std::move(sock)) {}
+
+void protocol::receive_engine() {
+  // own thread catch everything
+  int fails = 0;
+  while (!disconnected && fails < 3) {
+    try {
+      // std::string line = socket::receive();
+      // packet(line);
+      packet(socket::receive());
+    } catch (const connection_closed &e) {
+      disconnected = true;
+
+    } catch (const std::exception &e) {
+      std::cout << e.what() << std::endl;
+      fails++;
+    }
+  }
+}
+
+protocol::~protocol() {
+  if (iothread.joinable())
+    iothread.join();
+}

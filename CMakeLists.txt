@@ -18,10 +18,9 @@ add_library(catchmain tests/tester.cpp)
 add_library(socket src/socket.cpp)
 
 add_library(irc_server src/irc_server.cpp)
-target_link_libraries(irc_server PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE irc_msg_parser PUBLIC socket)
+target_link_libraries(irc_server PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE irc_msg_parser PUBLIC socket PRIVATE protocol)
 target_compile_features(irc_server PUBLIC cxx_std_17)
 #target_link_libraries(irc_server irc_msg_parser)
-
 
 
 add_executable(socket_tests tests/socket_tests.cpp)
@@ -47,7 +46,7 @@ add_library(protocol src/protocol.cpp)
 target_link_libraries(protocol PRIVATE socket PRIVATE irc_msg_parser PRIVATE queue)
 
 add_executable(proto_test tests/protocol_test.cpp)
-target_link_libraries(proto_test PRIVATE protocol PRIVATE catchmain)
+target_link_libraries(proto_test PRIVATE protocol PRIVATE catchmain PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 SET(TEST_APPS ${TEST_APPS} proto_test)
 
 add_library(queue src/queue.cpp)

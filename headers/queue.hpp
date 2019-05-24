@@ -3,7 +3,7 @@
 #include <memory>
 #include <mutex>
 
-template <typename T> class queue {
+template <class T> class queue {
 public:
   struct node {
     std::unique_ptr<T> item;
@@ -39,7 +39,8 @@ public:
     first = std::move(temp->getnext());
     return std::move(temp->get());
   }
-  bool empty() {
+  bool empty() const {
+    // std::lock_guard<std::mutex> lck(mtx);
     if (last == nullptr)
       return true;
     return false;
