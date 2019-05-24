@@ -13,7 +13,7 @@ constexpr uint buffer_size = 1024; // A gloabal. Am I insane? Its const...
 socket::socket() {}
 
 void socket::connect(std::string host, std::string port) {
-  if (open)
+  if (sock != -1)
     throw socket_in_use();
   addrinfo *address = nullptr;
   std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> addressptr(nullptr,
@@ -42,20 +42,26 @@ void socket::connect(std::string host, std::string port) {
     }
     // at this point we have created a sock and connected to it so we can exit
     // the loop
-    if (try_this_address == nullptr)
-      throw connection_refused();
-    open = true;
+    break;
   }
+  if (try_this_address == nullptr)
+    throw connection_refused();
+  open = true;
   ///////////////////////save resolve info///////////////////////////////
 }
-void socket::close() const {
-  if (open)
+void socket::close() {
+  if (sock != -1)
     ::close(sock);
   open = false;
+  sock = -1;
+}
+socket::~socket() { close(); }
+socket::socket(socket &&other) : sock(other.sock), open(other.open) {
+  other.sock = -1;
 }
 
 void socket::bind(std::string port, std::string host) {
-  if (open)
+  if (sock != -1)
     throw socket_in_use();
   addrinfo hints, *address = nullptr;
   std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> addressptr(nullptr,
@@ -99,19 +105,21 @@ void socket::bind(std::string port, std::string host) {
 }
 
 void socket::send(std::string message) const {
-  if (!open)
+  if (sock == -1)
     throw socket_not_open();
   int rv = ::send(sock, message.c_str(), message.length(), 0);
   if (rv == -1) {
     // check errno
-    throw "send failed, learn errno\n";
+    throw send_fail(strerror(errno));
   } else if (ulong sent_length = rv; sent_length < message.length()) {
     // we have a problem. We need to send the remaining data...
   }
 }
 
+int socket::sockfd() const { return sock; }
+
 std::string socket::receive() const {
-  if (!open)
+  if (sock == -1)
     throw socket_not_open();
   char buffer[buffer_size];
   int rv = ::recv(sock, &buffer, buffer_size, 0);
@@ -129,10 +137,16 @@ class socket socket::accept() const {
   int con = ::accept(sock, their_address.get(), &size);
   if (con == -1)
     throw accept_fail(strerror(errno));
-  // return connection(con, std::move(their_address));
-  return socket(con);
+
+  char host[1024];
+  char service[20];
+
+  getnameinfo(their_address.get(), sizeof(sockaddr), host, sizeof host, service,
+              sizeof service, 0);
+  return socket(con, std::string(host));
 }
+const std::string &socket::hostname() const { return hostname_connected_to; }
 
 socket::socket(int con, std::string &&host)
-    : sock(con), hostname(std::move(host)), open(true) {}
+    : sock(con), hostname_connected_to(std::move(host)), open(true) {}
 socket::socket(int con) : sock(con), open(true) {}

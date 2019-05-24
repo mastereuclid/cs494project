@@ -8,18 +8,23 @@ public:
   socket();
   void connect(std::string host, std::string port);
   // int socketfd();
-  void close() const;
+  void close();
   void bind(std::string, std::string = "localhost");
   void send(std::string) const;
   std::string receive() const;
   socket accept() const;
+  ~socket();
+  socket(socket &&);
+  const std::string &hostname() const;
   // void bind(std)
+protected:
+  int sockfd() const;
 
 private:
   socket(int con, std::string &&);
   socket(int con);
-  int sock = 0;
-  std::string hostname;
+  int sock = -1;
+  std::string hostname_connected_to;
   std::string port;
   // std::string resolved_host;
   mutable bool open = false;
@@ -92,6 +97,16 @@ class bind_fail : public std::exception {
 public:
   bind_fail(std::string err) {
     error = std::string("bind failed: ").append(err);
+  }
+  const char *what() const noexcept override { return error.c_str(); }
+
+private:
+  std::string error;
+};
+class send_fail : public std::exception {
+public:
+  send_fail(std::string err) {
+    error = std::string("send failed: ").append(err);
   }
   const char *what() const noexcept override { return error.c_str(); }
 
