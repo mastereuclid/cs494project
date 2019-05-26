@@ -15,9 +15,9 @@ public:
   const std::string &data() const;
   const mparams_t &middleparam() const;
   uint num_of_params() const;
+  const std::string line;
 
 private:
-  std::string line;
   prefix_type my_prefix;
   // prefix: NONE or SERVERNAME or nick!user@host
   std::string from_servername;

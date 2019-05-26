@@ -56,7 +56,9 @@ void protocol::close() {
   socket::close();
 }
 
-protocol::protocol(socket &&sock) : socket(std::move(sock)) {}
+protocol::protocol(socket &&sock) : socket(std::move(sock)) {
+  launch_receiving_thread();
+}
 
 void protocol::receive_engine() {
   // own thread catch everything
@@ -64,7 +66,8 @@ void protocol::receive_engine() {
   while (!disconnected && fails < 3) {
     try {
       // std::string line = socket::receive();
-      // packet(line);
+      // std::cout << line << std::endl;
+      // packet(std::move(line));
       packet(socket::receive());
     } catch (const connection_closed &e) {
       disconnected = true;

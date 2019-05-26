@@ -22,6 +22,19 @@ std::atomic<uint> num_in_limbo = 0;
 
 ///////////////// thread safe data function //////////////////
 
+void insert_nick(std::string nickname, nickptr newnick) {
+  guard lock(nickex);
+  if (nicks.count(nickname) > 0) {
+    throw nick_in_use();
+  }
+  nicks.emplace(nickname, newnick);
+}
+
+uint nick_count() {
+  guard lock(nickex);
+  return nicks.size();
+}
+
 // bool insert_nick(socket &&sock, std::string nickname, std::string user,
 //                  std::string real) {
 //   guard lock(nickex);
@@ -46,7 +59,7 @@ void limbo(socket &&sock) {
     nickptr connection = std::make_shared<irc::server::nick>(std::move(sock));
     // this loop doesn't check a number of attempts, might add later
     for (auto time_limit =
-             std::chrono::system_clock::now() + std::chrono::seconds(15);
+             std::chrono::system_clock::now() + std::chrono::seconds(150);
          std::chrono::system_clock::now() < time_limit;) {
       // check for incoming
       if (connection->msg_queue_empty()) {
@@ -62,13 +75,25 @@ void limbo(socket &&sock) {
               nickname = msg->middleparam().at(0);
             }
           } else if (msg->command() == command_user) {
-            if (msg->num_of_params() == 1) {
+            if (msg->num_of_params() > 1) {
               username = msg->middleparam().at(0);
+              realname = msg->data();
             }
           }
-          if (!nickname.empty() && !username.empty()) {
+          if (!nickname.empty() && !username.empty() && !realname.empty()) {
+            // std::cout << nickname << " and " << username << std::endl;
             // check if username/nickname combo is available
             // if not should probably unset nickname
+            try {
+              insert_nick(nickname, connection);
+            } catch (const nick_in_use &e) {
+            }
+            // we successfully inserted a nick and need to set the data in the
+            // nick object
+            connection->setnickname(nickname);
+            connection->setusername(username);
+            connection->setrealname(realname);
+            // I think an motd function should probably go here
           }
         }
       }
@@ -81,8 +106,13 @@ void limbo(socket &&sock) {
 
 ///////////////////class definitionsm threading/////////////////////////////////
 void server::start_accepting_clients() {
-  accept_thread = std::thread(&server::engine, this);
+  // accept_thread = std::thread(&server::engine, this);
+  std::thread(&server::engine, this).detach();
   std::this_thread::yield();
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  std::unique_lock<std::mutex> lock(awake);
+  // while (!running)
+  // server_up.wait(lock);
 }
 void server::stop_accepting_clients() {
   running = false;
@@ -99,17 +129,16 @@ server::~server() {
     accept_thread.join();
 }
 
-uint server::conn_count() const {
-  std::lock_guard<std::mutex> lock1(nickex);
-  return nicks.size();
-}
+uint server::conn_count() const { return nick_count(); }
 uint server::limbo_count() const { return num_in_limbo; }
 
 void server::engine() {
   // this is in its own thread so it needs to catch everything
   // std::cout << "omg what is happening\n";
+  server_up.notify_all();
   try {
     listsock.bind(port);
+    running = true;
     while (running) {
       socket temp = listsock.accept();
       if (running)
@@ -123,3 +152,9 @@ void server::engine() {
 }
 
 nick::nick(::socket &&sock) : protocol(std::move(sock)) {}
+void nick::setnickname(std::string newnick) { nickname = std::move(newnick); }
+void nick::setrealname(std::string newreal) { user = std::move(newreal); }
+void nick::setusername(std::string newuser) { real = std::move(newuser); }
+const std::string &nick::getnickname() const { return nickname; }
+const std::string &nick::getrealname() const { return real; }
+const std::string &nick::getusername() const { return user; }

@@ -15,7 +15,7 @@ using std::string;
 <crlf> ::= CR LF
 */
 // irc_msg::irc_msg() {}
-irc_msg::irc_msg() {}
+irc_msg::irc_msg() : line("") {}
 irc_msg::irc_msg(std::string &&raw) : line(std::move(raw)) {
   // check for prefix
   // auto iter = line.begin();
