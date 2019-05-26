@@ -14,6 +14,14 @@ public:
     void setnext(std::unique_ptr<node> arg) { next = std::move(arg); }
     std::unique_ptr<node> getnext() { return std::move(this->next); }
     const std::unique_ptr<node> &refnext() { return this->next; }
+
+    void clear() {
+      if (next) {
+        next->clear();
+        next.reset();
+      }
+      item.reset();
+    }
   };
   queue() : first(std::make_unique<node>()) {}
   void push(std::unique_ptr<T> arg) {
@@ -27,6 +35,7 @@ public:
       last->set(std::move(arg));
     }
   }
+  // ~queue() { first->clear(); }
   std::unique_ptr<T> pop() {
     std::lock_guard<std::mutex> lck(mtx);
     if (!first) {
@@ -34,6 +43,9 @@ public:
     }
     if (first.get() == last) {
       last = nullptr;
+      auto temp = std::move(first->get());
+      first.reset();
+      return temp;
     }
     auto temp = std::move(first);
     first = std::move(temp->getnext());

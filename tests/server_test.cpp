@@ -43,7 +43,12 @@ TEST_CASE("accept a nick", "[irc_server]") {
   // std::this_thread::sleep_for(std::chrono::seconds(10));
   client.send("NICK albert\r\n");
   client.send("USER username hostname servername :al B\r\n");
-  std::this_thread::sleep_for(std::chrono::seconds(3));
+  client.send("HELLO #what :hello there\r\n");
+  // std::this_thread::sleep_for(std::chrono::seconds(3));
+  string msg = client.receive();
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+
+  std::cout << msg << std::endl;
   uint num_of_nicks = server.conn_count();
   server.stop_accepting_clients();
   client.close();

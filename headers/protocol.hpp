@@ -11,7 +11,7 @@
 #include <thread>
 namespace irc {
 
-class protocol : socket {
+class protocol : public socket {
 public:
   protocol();
   protocol(std::string hostname, std::string port = "6667");
@@ -28,6 +28,7 @@ public:
   bool msg_queue_empty() const;
   void launch_receiving_thread();
   void close();
+  void sendircmsg(const std::string &msg);
 
 private:
   void receive_engine();

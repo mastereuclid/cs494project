@@ -24,7 +24,7 @@ add_library(catchmain tests/tester.cpp)
 add_library(socket src/socket.cpp)
 
 add_library(irc_server src/irc_server.cpp)
-target_link_libraries(irc_server PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE irc_msg_parser PUBLIC socket PRIVATE protocol)
+target_link_libraries(irc_server PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE irc_msg_parser PUBLIC socket PRIVATE protocol PUBLIC responses)
 target_compile_features(irc_server PUBLIC cxx_std_17)
 #target_link_libraries(irc_server irc_msg_parser)
 
@@ -42,7 +42,7 @@ target_link_libraries(parser_test PRIVATE catchmain PRIVATE irc_msg_parser)
 SET(TEST_APPS ${TEST_APPS} parser_test)
 
 add_executable(irc_server_test tests/server_test.cpp)
-target_link_libraries(irc_server_test PRIVATE irc_msg_parser PRIVATE socket PRIVATE irc_server PRIVATE catchmain PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(irc_server_test PRIVATE irc_msg_parser PRIVATE socket PRIVATE irc_server PRIVATE catchmain PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE responses)
 SET(TEST_APPS ${TEST_APPS} irc_server_test)
 
 add_library(parser src/parser.cpp)
@@ -60,6 +60,11 @@ target_compile_features(queue PUBLIC cxx_std_17)
 add_executable(queue_test tests/queue_test.cpp)
 target_link_libraries(queue_test PRIVATE queue PRIVATE catchmain)
 SET(TEST_APPS ${TEST_APPS} queue_test)
+
+add_library(responses src/responses.cpp)
+target_compile_features(responses PUBLIC cxx_std_17)
+add_executable(replies_test tests/response_test.cpp)
+target_link_libraries(replies_test PRIVATE catchmain PRIVATE responses)
 
 foreach( tester ${TEST_APPS} )
   catch_discover_tests(${tester})

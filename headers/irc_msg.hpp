@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <vector>
 using mparams_t = std::vector<std::string>;

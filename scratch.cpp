@@ -2,11 +2,13 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <set>
 #include <thread>
 #include <utility>
 using namespace std;
+mutex testex;
 class testclass {
 public:
   testclass() { cout << "testclass constr\n"; }
@@ -33,14 +35,18 @@ void testchrono() {
   // cout << now << endl;
 }
 
-auto testqueue() {
-  std::queue<std::unique_ptr<testclass>> bla;
-  auto pt1 = make_unique<testclass>();
-  bla.emplace(pt1);
-  return bla.front();
-}
+// auto testqueue() {
+//   std::queue<std::unique_ptr<testclass>> bla;
+//   auto pt1 = make_unique<testclass>();
+//   bla.emplace(pt1);
+//   return bla.front();
+// }
+void testlockifelse() {
+  lock_guard<mutex> lock(testex);
 
+  lock_guard<mutex> lock2(testex);
+}
 int main() {
-  std::unique_ptr<testclass> = testqueue();
+  testlockifelse();
   cout << "main about to pop\n";
 }

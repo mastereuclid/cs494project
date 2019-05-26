@@ -1,24 +1,34 @@
 #include "irc_server.hpp"
+// #include "responses.hpp"
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <mutex>
-#include <set>
+#include <sstream>
 #include <unordered_map>
 using namespace irc::server;
 using guard = std::lock_guard<std::mutex>;
 using nickptr = std::shared_ptr<nick>;
 using msgptr = std::unique_ptr<irc_msg>;
+using chanptr = std::unique_ptr<channel>;
+using std::string;
+void no_command_found(nickptr user, msgptr msg);
+//////////////////////////set dispatch hooks///////////////////////////
+const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+dispatch_table();
 //////////////// data structures  //////////////////
 // nicks
 std::mutex nickex;
 static std::unordered_map<std::string, nickptr> nicks;
 // channels
 std::mutex chanex;
-static std::unordered_map<std::string, channel> channels;
+static std::map<std::string, chanptr> channels;
 std::atomic<uint> num_in_limbo = 0;
-// pending connections
+// command to function dispatch
+const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+    dispatch = dispatch_table();
 
 ///////////////// thread safe data function //////////////////
 
@@ -33,6 +43,17 @@ void insert_nick(std::string nickname, nickptr newnick) {
 uint nick_count() {
   guard lock(nickex);
   return nicks.size();
+}
+
+bool chan_exist(string chan) {
+  guard lock(chanex);
+  if (channels.count(chan) > 0)
+    return true;
+  return false;
+}
+const channel &get_channel(string chan) {
+  guard lock(chanex);
+  return *channels.at(chan).get();
 }
 
 // bool insert_nick(socket &&sock, std::string nickname, std::string user,
@@ -58,15 +79,16 @@ void limbo(socket &&sock) {
     std::string realname;
     nickptr connection = std::make_shared<irc::server::nick>(std::move(sock));
     // this loop doesn't check a number of attempts, might add later
+    bool success = false;
     for (auto time_limit =
-             std::chrono::system_clock::now() + std::chrono::seconds(150);
+             std::chrono::system_clock::now() + std::chrono::seconds(15);
          std::chrono::system_clock::now() < time_limit;) {
       // check for incoming
       if (connection->msg_queue_empty()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         continue;
       } else {
-        while (!connection->msg_queue_empty()) {
+        while (!connection->msg_queue_empty() && !success) {
           // get all the messages in the queue. See if they are a NICK or USER
           // silently ignore other types or nicks that are already taken
           msgptr msg = connection->get_next_irc_msg_ptr();
@@ -88,15 +110,19 @@ void limbo(socket &&sock) {
               insert_nick(nickname, connection);
             } catch (const nick_in_use &e) {
             }
+            success = true;
             // we successfully inserted a nick and need to set the data in the
             // nick object
             connection->setnickname(nickname);
             connection->setusername(username);
             connection->setrealname(realname);
             // I think an motd function should probably go here
+            break;
           }
         }
       }
+      if (success)
+        break;
     }
   } catch (const std::exception &e) {
     std::cout << "limbo: " << e.what() << std::endl;
@@ -107,7 +133,9 @@ void limbo(socket &&sock) {
 ///////////////////class definitionsm threading/////////////////////////////////
 void server::start_accepting_clients() {
   // accept_thread = std::thread(&server::engine, this);
+  running = true;
   std::thread(&server::engine, this).detach();
+  msg_thread = std::thread(&server::msg_engine, this);
   std::this_thread::yield();
   std::this_thread::sleep_for(std::chrono::seconds(1));
   std::unique_lock<std::mutex> lock(awake);
@@ -125,8 +153,8 @@ void server::stop_accepting_clients() {
   }
 }
 server::~server() {
-  if (accept_thread.joinable())
-    accept_thread.join();
+  if (msg_thread.joinable())
+    msg_thread.join();
 }
 
 uint server::conn_count() const { return nick_count(); }
@@ -138,7 +166,7 @@ void server::engine() {
   server_up.notify_all();
   try {
     listsock.bind(port);
-    running = true;
+
     while (running) {
       socket temp = listsock.accept();
       if (running)
@@ -150,7 +178,30 @@ void server::engine() {
     std::cout << "server engine exception: " << e.what();
   }
 }
-
+void server::msg_engine() {
+  // std::unique_lock<std::mutex> lock(nickex, std::defer_lock);
+  std::cout << "msg engine running" << std::endl;
+  while (running) {
+    // lock.lock();
+    for (auto [nickname, nickdata] : nicks) {
+      if (nickdata->msg_queue_empty())
+        continue;
+      // get the msg
+      std::cout << "msg engine found data" << std::endl;
+      msgptr msg = nickdata->get_next_irc_msg_ptr();
+      // is there a dispatch func for the command? if not report an error
+      if (dispatch.count(msg->command()) == 0) {
+        no_command_found(nickdata, std::move(msg));
+      } else {
+        auto commandfunc = dispatch.at(msg->command());
+        commandfunc(nickdata, std::move(msg));
+      }
+    }
+    // lock.unlock();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+  std::cout << "msg engine stopped" << std::endl;
+}
 nick::nick(::socket &&sock) : protocol(std::move(sock)) {}
 void nick::setnickname(std::string newnick) { nickname = std::move(newnick); }
 void nick::setrealname(std::string newreal) { user = std::move(newreal); }
@@ -158,3 +209,94 @@ void nick::setusername(std::string newuser) { real = std::move(newuser); }
 const std::string &nick::getnickname() const { return nickname; }
 const std::string &nick::getrealname() const { return real; }
 const std::string &nick::getusername() const { return user; }
+channel::channel(std::string name) : chan_name(std::move(name)) {}
+void channel::set_topic(std::string newtopic) { topic = std::move(newtopic); }
+const string &channel::get_topic() const { return topic; }
+void channel::join(nickptr user) {
+  // check if banned or invite only, but I don't think I'm going to do those for
+  // now
+  bool oper = false;
+  if (list_of_nicks.size() == 0)
+    oper = true;
+  list_of_nicks.insert(user);
+  // broadcast the join
+  std::stringstream msg;
+  msg << ":" << user->getnickname() << " JOIN " << chan_name;
+  broadcast(msg.str());
+}
+void channel::privmsg(nickptr user, const string &msg) const {
+  // check if allowed to privmsg
+
+  // build msg
+  std::stringstream out;
+  out << ":" << user->getnickname() << " PRIVMSG " << chan_name << " :" << msg;
+  // broadcast
+  broadcast(out.str());
+}
+void channel::broadcast(std::string msg) const {
+  for (nickptr user : list_of_nicks) {
+    user->sendircmsg(msg);
+  }
+}
+////////////////////////command to function dispatch///////////////////////////
+
+void join_channel(nickptr user, msgptr msg) {
+  // is there a channel specified?
+  guard lock(chanex);
+  if (msg->middleparam().size() < 1) {
+    user->sendircmsg(err_NEEDMOREPARAMS(msg->command()));
+    return;
+  }
+  const string &chan_name = msg->middleparam().at(0);
+  // is there a channel
+  if (channels.count(chan_name) > 0) {
+    // yes? check if allowed to enter
+    channel &chan = *channels.at(chan_name).get();
+    chan.join(user);
+  } else {
+    // no? create it and enter
+    // channels.emplace(msg->middleparam().at(0)), chan_name);
+    channels.insert({chan_name, std::make_unique<channel>(chan_name)});
+    channel &chan = *channels.at(chan_name).get();
+    chan.join(user);
+  }
+}
+void privmsg(nickptr user, msgptr msg) {
+  // no destination?
+  if (msg->middleparam().size() == 0) {
+    // if not report the error
+    user->sendircmsg(err_NEEDMOREPARAMS(msg->command()));
+    return;
+  }
+  // no data?
+  if (msg->data().empty()) {
+    user->sendircmsg(err_NOTEXTTOSEND());
+  }
+  // channel or nick?
+  if (*msg->middleparam().at(0).begin() == '#') {
+    // msg a channel
+    guard lock(chanex);
+    const channel &chan = *channels.at(msg->middleparam().at(0)).get();
+    chan.privmsg(user, msg->data());
+  } else {
+    guard lock(nickex);
+    // msg a user
+    const nick &user_to = *nicks.at(msg->middleparam().at(0)).get();
+    user_to.privmsg(user->getnickname(), msg->data());
+  }
+}
+void no_command_found(nickptr user, msgptr msg) {
+  user->sendircmsg(err_UNKNOWNCOMMAND(msg->command()));
+}
+
+///////////////////////dispatch table////////////////////////////////////////
+const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+dispatch_table() {
+  std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+      dispatch;
+  dispatch.emplace("PRIVMSG", privmsg);
+
+  dispatch.emplace("JOIN", join_channel);
+  // dispatch.emplace("no_command_found", no_command_found);
+  return dispatch;
+}
