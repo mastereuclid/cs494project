@@ -15,6 +15,7 @@ public:
   void stop_accepting_clients();
   ~server();
   server() = default;
+  server(std::string name);
   server(server &&) = delete;
   server(const server &) = delete;
   uint conn_count() const;

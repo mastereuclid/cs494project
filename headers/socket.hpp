@@ -24,7 +24,7 @@ private:
   socket(int con, std::string &&);
   socket(int con);
   int sock = -1;
-  std::string hostname_connected_to;
+  mutable std::string hostname_connected_to;
   std::string port;
   // std::string resolved_host;
   mutable bool open = false;

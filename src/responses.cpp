@@ -20,3 +20,5 @@ string err_NEEDMOREPARAMS(string arg) {
 }
 
 string err_NOTEXTTOSEND() { return string("412  :No text to send"); }
+
+// string rpl_WELCOME(string arg)

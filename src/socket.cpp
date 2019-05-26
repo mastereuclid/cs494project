@@ -145,7 +145,27 @@ class socket socket::accept() const {
               sizeof service, 0);
   return socket(con, std::string(host));
 }
-const std::string &socket::hostname() const { return hostname_connected_to; }
+const std::string &socket::hostname() const {
+  if (hostname_connected_to.empty()) {
+    sockaddr address;
+    socklen_t addr_size = sizeof(address);
+
+    int rv = getpeername(sock, &address, &addr_size);
+    if (rv == -1) {
+      // I should check for some recoverable errors
+      return hostname_connected_to;
+    }
+    char host[1024];
+    char service[20];
+
+    // pretend sa is full of good information about the host and port...
+
+    getnameinfo(&address, sizeof address, host, sizeof host, service,
+                sizeof service, 0);
+    hostname_connected_to = std::string(host);
+  }
+  return hostname_connected_to;
+}
 
 socket::socket(int con, std::string &&host)
     : sock(con), hostname_connected_to(std::move(host)), open(true) {}

@@ -1,6 +1,8 @@
 #include <string>
 using std::string; // I know this isn't kosher in a header file. Deal with it.
 
+// string rpl_WELCOME(string arg);
+
 string err_NOSUCHNICK(string arg);
 string err_NOSUCHCHANNEL(string arg);
 string err_UNKNOWNCOMMAND(string arg);

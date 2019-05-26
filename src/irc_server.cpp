@@ -27,9 +27,10 @@ std::mutex chanex;
 static std::map<std::string, chanptr> channels;
 std::atomic<uint> num_in_limbo = 0;
 // command to function dispatch
-const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+static const std::unordered_map<std::string,
+                                std::function<void(nickptr, msgptr &&)>>
     dispatch = dispatch_table();
-
+static std::string servername = "server.name";
 ///////////////// thread safe data function //////////////////
 
 void insert_nick(std::string nickname, nickptr newnick) {
@@ -117,6 +118,7 @@ void limbo(socket &&sock) {
             connection->setusername(username);
             connection->setrealname(realname);
             // I think an motd function should probably go here
+            motd(connection);
             break;
           }
         }
@@ -131,6 +133,7 @@ void limbo(socket &&sock) {
 }
 
 ///////////////////class definitionsm threading/////////////////////////////////
+server::server(std::string name) { servername = name; }
 void server::start_accepting_clients() {
   // accept_thread = std::thread(&server::engine, this);
   running = true;
@@ -287,6 +290,16 @@ void privmsg(nickptr user, msgptr msg) {
 }
 void no_command_found(nickptr user, msgptr msg) {
   user->sendircmsg(err_UNKNOWNCOMMAND(msg->command()));
+}
+
+void motd(nickptr user) {
+  std::stringstream welmsg;
+  welmsg << "001 " << user->getnickname() << " :Welcome to " << servername
+         << " " << user->getnickname();
+  user->sendircmsg(welmsg.str());
+  welmsg.clear();
+  welmsg << ":" << servername << " 375";
+  user->sendircmsg("375");
 }
 
 ///////////////////////dispatch table////////////////////////////////////////
