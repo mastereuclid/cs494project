@@ -19,7 +19,7 @@ void protocol::packet(std::string &&packet) {
     }
   }
 }
-void protocol::sendircmsg(const std::string &msg) {
+void protocol::sendircmsg(const std::string &msg) const {
   socket::send(msg + "\r\n");
 }
 std::unique_ptr<irc_msg> protocol::get_next_irc_msg_ptr() {

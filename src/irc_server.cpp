@@ -15,6 +15,7 @@ using msgptr = std::unique_ptr<irc_msg>;
 using chanptr = std::unique_ptr<channel>;
 using std::string;
 void no_command_found(nickptr user, msgptr msg);
+void motd(nickptr user);
 //////////////////////////set dispatch hooks///////////////////////////
 const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
 dispatch_table();
@@ -110,6 +111,13 @@ void limbo(socket &&sock) {
             try {
               insert_nick(nickname, connection);
             } catch (const nick_in_use &e) {
+              // respond to client
+              connection->sendircmsg(err_NICKNAMEINUSE(nickname));
+              // unset nick
+              nickname.clear();
+              continue;
+            } catch (const std::exception &e) {
+              std::cout << "limbo exception:" << e.what();
             }
             success = true;
             // we successfully inserted a nick and need to set the data in the
@@ -183,25 +191,29 @@ void server::engine() {
 }
 void server::msg_engine() {
   // std::unique_lock<std::mutex> lock(nickex, std::defer_lock);
-  std::cout << "msg engine running" << std::endl;
-  while (running) {
-    // lock.lock();
-    for (auto [nickname, nickdata] : nicks) {
-      if (nickdata->msg_queue_empty())
-        continue;
-      // get the msg
-      std::cout << "msg engine found data" << std::endl;
-      msgptr msg = nickdata->get_next_irc_msg_ptr();
-      // is there a dispatch func for the command? if not report an error
-      if (dispatch.count(msg->command()) == 0) {
-        no_command_found(nickdata, std::move(msg));
-      } else {
-        auto commandfunc = dispatch.at(msg->command());
-        commandfunc(nickdata, std::move(msg));
+  try {
+    std::cout << "msg engine running" << std::endl;
+    while (running) {
+      // lock.lock();
+      for (auto [nickname, nickdata] : nicks) {
+        if (nickdata->msg_queue_empty())
+          continue;
+        // get the msg
+        std::cout << "msg engine found data" << std::endl;
+        msgptr msg = nickdata->get_next_irc_msg_ptr();
+        // is there a dispatch func for the command? if not report an error
+        if (dispatch.count(msg->command()) == 0) {
+          no_command_found(nickdata, std::move(msg));
+        } else {
+          auto commandfunc = dispatch.at(msg->command());
+          commandfunc(nickdata, std::move(msg));
+        }
       }
+      // lock.unlock();
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-    // lock.unlock();
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  } catch (const std::exception &e) {
+    std::cout << "msg engine exception: " << e.what() << std::endl;
   }
   std::cout << "msg engine stopped" << std::endl;
 }
@@ -264,6 +276,11 @@ void join_channel(nickptr user, msgptr msg) {
     chan.join(user);
   }
 }
+void nick::privmsg(const std::string &from, const std::string &data) const {
+  std::stringstream out;
+  out << ":" << from << " PRIVMSG " << nickname << " :" << data;
+  sendircmsg(out.str());
+}
 void privmsg(nickptr user, msgptr msg) {
   // no destination?
   if (msg->middleparam().size() == 0) {
@@ -299,7 +316,7 @@ void motd(nickptr user) {
   user->sendircmsg(welmsg.str());
   welmsg.clear();
   welmsg << ":" << servername << " 375";
-  user->sendircmsg("375");
+  // user->sendircmsg("375");
 }
 
 ///////////////////////dispatch table////////////////////////////////////////

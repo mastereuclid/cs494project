@@ -28,7 +28,7 @@ public:
   bool msg_queue_empty() const;
   void launch_receiving_thread();
   void close();
-  void sendircmsg(const std::string &msg);
+  void sendircmsg(const std::string &msg) const;
 
 private:
   void receive_engine();

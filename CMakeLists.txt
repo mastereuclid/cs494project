@@ -66,6 +66,11 @@ target_compile_features(responses PUBLIC cxx_std_17)
 add_executable(replies_test tests/response_test.cpp)
 target_link_libraries(replies_test PRIVATE catchmain PRIVATE responses)
 
+add_executable(server src/server.cpp)
+target_link_libraries(server PRIVATE irc_server)
+add_executable(simple_hello tests/client_stub.cpp)
+target_link_libraries(simple_hello PRIVATE socket)
+
 foreach( tester ${TEST_APPS} )
   catch_discover_tests(${tester})
 endforeach()

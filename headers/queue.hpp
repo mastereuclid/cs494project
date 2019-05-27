@@ -10,7 +10,7 @@ public:
     std::unique_ptr<node> next;
     node() : item(nullptr), next(nullptr) {}
     std::unique_ptr<T> get() { return std::move(this->item); }
-    void set(std::unique_ptr<T> &&arg) { item.reset(arg.release()); }
+    void set(std::unique_ptr<T> &&arg) { item = std::move(arg); }
     void setnext(std::unique_ptr<node> arg) { next = std::move(arg); }
     std::unique_ptr<node> getnext() { return std::move(this->next); }
     const std::unique_ptr<node> &refnext() { return this->next; }
@@ -27,6 +27,7 @@ public:
   void push(std::unique_ptr<T> arg) {
     std::lock_guard<std::mutex> lck(mtx);
     if (last == nullptr) {
+      first = std::make_unique<node>();
       first->set(std::move(arg));
       last = first.get();
     } else {
