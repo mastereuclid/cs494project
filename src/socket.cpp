@@ -110,7 +110,7 @@ void socket::send(std::string message) const {
   int rv = ::send(sock, message.c_str(), message.length(), 0);
   if (rv == -1) {
     // check errno
-    throw send_fail(strerror(errno));
+    throw send_fail(strerror(errno), errno);
   } else if (ulong sent_length = rv; sent_length < message.length()) {
     // we have a problem. We need to send the remaining data...
   }

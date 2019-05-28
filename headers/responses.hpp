@@ -2,12 +2,13 @@
 using std::string; // I know this isn't kosher in a header file. Deal with it.
 
 // string rpl_WELCOME(string arg);
+const string rpl_quit(const string nickname, const string message);
+const string rpl_privmsg(const string nickname, const string dest,
+                         const string msg);
+const string err_NOSUCHNICK(const string arg);
+const string err_NOSUCHCHANNEL(const string arg);
+const string err_UNKNOWNCOMMAND(const string arg);
+const string err_NICKNAMEINUSE(const string arg);
+const string err_NEEDMOREPARAMS(const string arg);
 
-string err_NOSUCHNICK(string arg);
-string err_NOSUCHCHANNEL(string arg);
-string err_UNKNOWNCOMMAND(string arg);
-string err_NICKNAMEINUSE(string arg);
-string err_NEEDMOREPARAMS(string arg);
-
-string err_NOTEXTTOSEND();
-string what();
+const string err_NOTEXTTOSEND();

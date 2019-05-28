@@ -4,17 +4,18 @@
 #include <atomic>
 #include <condition_variable>
 #include <exception>
+#include <map>
 #include <mutex>
 #include <set>
 #include <thread>
-
+#include <unordered_map>
 namespace irc::server {
 class server {
 public:
   void start_accepting_clients();
   void stop_accepting_clients();
   ~server();
-  server() = default;
+  server();
   server(std::string name);
   server(server &&) = delete;
   server(const server &) = delete;
@@ -22,6 +23,7 @@ public:
   uint limbo_count() const;
 
 private:
+  void pipesetter() const;
   std::atomic<bool> running = false;
   std::string port = "6667";
   std::thread msg_thread;
@@ -34,6 +36,7 @@ private:
 class nick : public protocol {
 public:
   nick(::socket &&);
+  ~nick();
   // bool operator<(const nick &other) { return nickname < other.nickname; }
   void setnickname(std::string newnick);
   void setrealname(std::string newreal);
@@ -42,11 +45,16 @@ public:
   const std::string &getrealname() const;
   const std::string &getusername() const;
   void privmsg(const std::string &from, const std::string &data) const;
+  void add_channel(std::string chan_name);
+  const std::set<std::string> &list_of_channels() const;
+  void quit(const std::string &quitmsg);
 
 private:
+  std::string quitmsg = "goodbye forever";
   std::string nickname;
   std::string user;
   std::string real;
+  std::set<std::string> channels;
 };
 class channel {
 public:
@@ -57,11 +65,13 @@ public:
   const std::string &get_topic() const;
   void join(std::shared_ptr<nick> user);
   void privmsg(std::shared_ptr<nick> user, const std::string &msg) const;
+  void quit(const std::string &nickname, const std::string &msg);
 
 private:
+  void remove_nick(std::string nickname);
   void broadcast(std::string msg) const;
   std::string topic = "default topic";
-  std::set<std::shared_ptr<nick>> list_of_nicks;
+  std::unordered_map<std::string, std::shared_ptr<nick>> list_of_nicks;
   // modes
   // should a channel have a list of strings and lookup
   // each nick object as needed or should nicks be shared_ptrs

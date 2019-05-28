@@ -1,13 +1,15 @@
 #include "irc_server.hpp"
+#include <signal.h>
 // #include "responses.hpp"
 #include <atomic>
 #include <chrono>
 #include <functional>
 #include <iostream>
-#include <map>
+
 #include <mutex>
 #include <sstream>
-#include <unordered_map>
+
+void sigpipe_handler(int unused) {}
 using namespace irc::server;
 using guard = std::lock_guard<std::mutex>;
 using nickptr = std::shared_ptr<nick>;
@@ -41,7 +43,15 @@ void insert_nick(std::string nickname, nickptr newnick) {
   }
   nicks.emplace(nickname, newnick);
 }
-
+/*
+void remove_nick_from_nicks(std::string nickname) {
+  guard lock(nickex);
+  auto node = nicks.extract(nickname);
+  // this nick should be destroyed once it leaves this scope
+  // nope, its a shared ptr
+  node.mapped()->remove();
+}
+*/
 uint nick_count() {
   guard lock(nickex);
   return nicks.size();
@@ -141,7 +151,18 @@ void limbo(socket &&sock) {
 }
 
 ///////////////////class definitionsm threading/////////////////////////////////
-server::server(std::string name) { servername = name; }
+server::server() { pipesetter(); }
+server::server(std::string name) {
+  servername = name;
+  pipesetter();
+}
+void server::pipesetter() const {
+  struct sigaction act;
+  act.sa_handler = sigpipe_handler;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+  sigaction(SIGPIPE, &act, NULL);
+}
 void server::start_accepting_clients() {
   // accept_thread = std::thread(&server::engine, this);
   running = true;
@@ -196,17 +217,26 @@ void server::msg_engine() {
     while (running) {
       // lock.lock();
       for (auto [nickname, nickdata] : nicks) {
-        if (nickdata->msg_queue_empty())
-          continue;
-        // get the msg
-        std::cout << "msg engine found data" << std::endl;
-        msgptr msg = nickdata->get_next_irc_msg_ptr();
-        // is there a dispatch func for the command? if not report an error
-        if (dispatch.count(msg->command()) == 0) {
-          no_command_found(nickdata, std::move(msg));
-        } else {
-          auto commandfunc = dispatch.at(msg->command());
-          commandfunc(nickdata, std::move(msg));
+        try {
+          if (nickdata->msg_queue_empty())
+            continue;
+          // get the msg
+          std::cout << "msg engine found data" << std::endl;
+          msgptr msg = nickdata->get_next_irc_msg_ptr();
+          // is there a dispatch func for the command? if not report an error
+          if (dispatch.count(msg->command()) == 0) {
+            no_command_found(nickdata, std::move(msg));
+          } else {
+            auto commandfunc = dispatch.at(msg->command());
+            commandfunc(nickdata, std::move(msg));
+          }
+        } catch (const send_fail &e) {
+          std::cout << "msg engine exception(i) " << e.errnum() << " :"
+                    << e.what() << std::endl;
+          if (e.errnum() == 32) {
+            nickdata->quit("BROKEN PIPE :-(");
+            // broken pipe: we need to remove user
+          }
         }
       }
       // lock.unlock();
@@ -221,9 +251,22 @@ nick::nick(::socket &&sock) : protocol(std::move(sock)) {}
 void nick::setnickname(std::string newnick) { nickname = std::move(newnick); }
 void nick::setrealname(std::string newreal) { user = std::move(newreal); }
 void nick::setusername(std::string newuser) { real = std::move(newuser); }
+void nick::add_channel(std::string chan_name) {
+  channels.emplace(std::move(chan_name));
+}
+const std::set<std::string> &nick::list_of_channels() const { return channels; }
 const std::string &nick::getnickname() const { return nickname; }
 const std::string &nick::getrealname() const { return real; }
 const std::string &nick::getusername() const { return user; }
+nick::~nick() {}
+void nick::quit(const std::string &quitmsg) {
+  for (std::string chan_name : channels) {
+    ::channels.at(chan_name)->quit(nickname, quitmsg);
+  }
+  auto temp = nicks.extract(nickname);
+  // temp destroyed at end of scope.
+}
+
 channel::channel(std::string name) : chan_name(std::move(name)) {}
 void channel::set_topic(std::string newtopic) { topic = std::move(newtopic); }
 const string &channel::get_topic() const { return topic; }
@@ -233,11 +276,12 @@ void channel::join(nickptr user) {
   bool oper = false;
   if (list_of_nicks.size() == 0)
     oper = true;
-  list_of_nicks.insert(user);
+  list_of_nicks.emplace(user->getnickname(), user);
   // broadcast the join
   std::stringstream msg;
   msg << ":" << user->getnickname() << " JOIN " << chan_name;
   broadcast(msg.str());
+  user->add_channel(chan_name);
 }
 void channel::privmsg(nickptr user, const string &msg) const {
   // check if allowed to privmsg
@@ -249,9 +293,17 @@ void channel::privmsg(nickptr user, const string &msg) const {
   broadcast(out.str());
 }
 void channel::broadcast(std::string msg) const {
-  for (nickptr user : list_of_nicks) {
+  for (auto &[nickname, user] : list_of_nicks) {
     user->sendircmsg(msg);
   }
+}
+void channel::quit(const std::string &nickname, const std::string &quitmsg) {
+  broadcast(rpl_quit(nickname, quitmsg));
+  remove_nick(nickname);
+}
+void channel::remove_nick(std::string nickname) {
+  auto temp = list_of_nicks.extract(nickname);
+  // falls off and dies
 }
 ////////////////////////command to function dispatch///////////////////////////
 

@@ -105,12 +105,14 @@ private:
 };
 class send_fail : public std::exception {
 public:
-  send_fail(std::string err) {
+  send_fail(std::string err, int errnum) : num(errnum) {
     error = std::string("send failed: ").append(err);
   }
   const char *what() const noexcept override { return error.c_str(); }
+  const int errnum() const { return num; }
 
 private:
+  int num = 0;
   std::string error;
 };
 #endif /* end of include guard:  */

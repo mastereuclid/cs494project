@@ -8,4 +8,5 @@ int main() {
   std::this_thread::sleep_for(std::chrono::seconds(1));
   client.send("JOIN #hi\r\n");
   client.send("PRIVMSG #hi :Hello there.\r\n");
+  std::this_thread::sleep_for(std::chrono::seconds(10));
 }

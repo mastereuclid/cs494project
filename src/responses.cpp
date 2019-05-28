@@ -1,24 +1,35 @@
 #include "responses.hpp"
+#include <sstream>
 // using namespace irc::response;
-string err_NOSUCHNICK(string arg) {
+const string err_NOSUCHNICK(const string arg) {
   return string("401 ") + arg + string(" :No such nick/channel");
 }
-string err_NOSUCHCHANNEL(string arg) {
+const string err_NOSUCHCHANNEL(const string arg) {
 
   return string("403 ") + arg + string(" :No such nick/channel");
 }
-string err_UNKNOWNCOMMAND(string arg) {
+const string err_UNKNOWNCOMMAND(const string arg) {
   return string("421 ") + arg + string(" :Unknown command");
 }
-string what() { return string("wtf"); }
 
-string err_NICKNAMEINUSE(string arg) {
+const string err_NICKNAMEINUSE(const string arg) {
   return string("433 ") + arg + string(" :Nickname is already in use");
 }
-string err_NEEDMOREPARAMS(string arg) {
+const string err_NEEDMOREPARAMS(const string arg) {
   return string("461 ") + arg + string(" :Not enough parameters");
 }
 
-string err_NOTEXTTOSEND() { return string("412  :No text to send"); }
+const string err_NOTEXTTOSEND() { return string("412  :No text to send"); }
 
 // string rpl_WELCOME(string arg)
+const string rpl_quit(const string nickname, const string message) {
+  std::stringstream out;
+  out << ":" << nickname << " QUIT :" << message;
+  return out.str();
+}
+const string rpl_privmsg(const string nickname, const string dest,
+                         const string msg) {
+  std::stringstream out;
+  out << ":" << nickname << " " << dest << " :" << msg;
+  return out.str();
+}
