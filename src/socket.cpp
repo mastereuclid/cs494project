@@ -124,7 +124,7 @@ std::string socket::receive() const {
   char buffer[buffer_size];
   int rv = ::recv(sock, &buffer, buffer_size, 0);
   if (rv == -1)
-    throw receive_fail(strerror(errno));
+    throw receive_fail(strerror(errno), errno);
   else if (rv == 0) {
     throw connection_closed();
   }

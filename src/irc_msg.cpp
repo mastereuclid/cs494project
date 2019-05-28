@@ -67,12 +67,12 @@ void irc_msg::split(string middle) {
   // split a string by spaces and place each part into a vector
 
   auto start = middle.find_first_not_of(' ');
-  auto space = middle.find_first_of(' ', start);
+  auto space = middle.find_first_of(' ', start + 1);
   while (start != string::npos) {
     num_params++;
     mparams.emplace_back(middle.substr(start, space - start));
     start = middle.find_first_not_of(' ', space);
-    space = middle.find_first_of(' ', start);
+    space = middle.find_first_of(' ', start + 1);
   }
 }
 

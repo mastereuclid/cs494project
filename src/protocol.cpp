@@ -20,6 +20,8 @@ void protocol::packet(std::string &&packet) {
   }
 }
 void protocol::sendircmsg(const std::string &msg) const {
+  if (disconnected)
+    return;
   socket::send(msg + "\r\n");
 }
 std::unique_ptr<irc_msg> protocol::get_next_irc_msg_ptr() {
@@ -71,11 +73,21 @@ void protocol::receive_engine() {
       // std::cout << line << std::endl;
       // packet(std::move(line));
       packet(socket::receive());
-    } catch (const connection_closed &e) {
+
+    } catch (const receive_fail &e) {
+      std::cout << "protocol engine" << e.errnum() << ": " << e.what()
+                << std::endl;
+      disconnected = true;
+      if (e.errnum() == 104) {
+        packet("QUIT :client closed connection\r\n");
+      }
+    }
+
+    catch (const connection_closed &e) {
       disconnected = true;
 
     } catch (const std::exception &e) {
-      std::cout << e.what() << std::endl;
+      std::cout << "protocol engine: " << e.what() << std::endl;
       fails++;
     }
   }

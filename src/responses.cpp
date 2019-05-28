@@ -13,7 +13,7 @@ const string err_UNKNOWNCOMMAND(const string arg) {
 }
 
 const string err_NICKNAMEINUSE(const string arg) {
-  return string("433 ") + arg + string(" :Nickname is already in use");
+  return string("433 * ") + arg + string(" :Nickname is already in use");
 }
 const string err_NEEDMOREPARAMS(const string arg) {
   return string("461 ") + arg + string(" :Not enough parameters");

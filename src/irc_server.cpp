@@ -119,9 +119,11 @@ void limbo(socket &&sock) {
             // check if username/nickname combo is available
             // if not should probably unset nickname
             try {
+              std::cout << nickname << std::endl;
               insert_nick(nickname, connection);
             } catch (const nick_in_use &e) {
               // respond to client
+              std::cout << "nickname in use\n";
               connection->sendircmsg(err_NICKNAMEINUSE(nickname));
               // unset nick
               nickname.clear();
@@ -371,6 +373,8 @@ void motd(nickptr user) {
   // user->sendircmsg("375");
 }
 
+void quit(nickptr user, msgptr msg) { user->quit(msg->data()); }
+
 ///////////////////////dispatch table////////////////////////////////////////
 const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
 dispatch_table() {
@@ -379,6 +383,7 @@ dispatch_table() {
   dispatch.emplace("PRIVMSG", privmsg);
 
   dispatch.emplace("JOIN", join_channel);
+  dispatch.emplace("QUIT", quit);
   // dispatch.emplace("no_command_found", no_command_found);
   return dispatch;
 }

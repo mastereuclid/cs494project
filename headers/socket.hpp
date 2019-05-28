@@ -79,12 +79,14 @@ private:
 };
 class receive_fail : public std::exception {
 public:
-  receive_fail(std::string err) {
-    error = std::string("receive failed: ").append(err);
+  receive_fail(std::string errm, int en) : errnumber(en) {
+    error = std::string("receive failed: ").append(errm);
   }
   const char *what() const noexcept override { return error.c_str(); }
+  int errnum() const { return errnumber; }
 
 private:
+  int errnumber;
   std::string error;
 };
 class connection_closed : public std::exception {
@@ -109,7 +111,7 @@ public:
     error = std::string("send failed: ").append(err);
   }
   const char *what() const noexcept override { return error.c_str(); }
-  const int errnum() const { return num; }
+  int errnum() const { return num; }
 
 private:
   int num = 0;
