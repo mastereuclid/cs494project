@@ -26,6 +26,11 @@ TEST_CASE("who command", "[parse]") {
   REQUIRE(msg.command() == string("WHO"));
   REQUIRE(msg.params() == string("#my_own_test_channel"));
   REQUIRE(msg.middleparam().at(0) == string("#my_own_test_channel"));
+  irc_msg copy(msg);
+  REQUIRE(copy.from_type() == irc_msg::prefix_type::NONE);
+  REQUIRE(copy.command() == string("WHO"));
+  REQUIRE(copy.params() == string("#my_own_test_channel"));
+  REQUIRE(copy.middleparam().at(0) == string("#my_own_test_channel"));
 }
 
 //:irc.Prison.NET PONG irc.Prison.NET :LAG1557902350392289

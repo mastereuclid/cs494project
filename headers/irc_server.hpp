@@ -1,4 +1,5 @@
 #include "irc_msg.hpp"
+#include "message.hpp"
 #include "protocol.hpp"
 #include "responses.hpp"
 #include <atomic>
@@ -70,16 +71,19 @@ public:
 private:
   void remove_nick(std::string nickname);
   void broadcast(std::string msg) const;
+  void broadcast_except(std::shared_ptr<nick> user, std::string msg) const;
   std::string topic = "default topic";
   std::unordered_map<std::string, std::shared_ptr<nick>> list_of_nicks;
   // modes
   // should a channel have a list of strings and lookup
   // each nick object as needed or should nicks be shared_ptrs
 };
+
 class nick_in_use : public std::exception {
 public:
   const char *what() const noexcept override {
     return "nickname is already taken";
   }
 };
+
 } // namespace irc::server

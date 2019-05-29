@@ -53,14 +53,14 @@ public:
     return std::move(temp->get());
   }
   bool empty() const {
-    // std::lock_guard<std::mutex> lck(mtx);
+    std::lock_guard<std::mutex> lck(mtx);
     if (last == nullptr)
       return true;
     return false;
   }
 
 private:
-  std::mutex mtx;
+  mutable std::mutex mtx;
   std::unique_ptr<node> first;
   node *last = nullptr;
 };
