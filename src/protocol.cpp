@@ -12,10 +12,11 @@ void protocol::packet(std::string &&packet) {
   } else {
     // parse_next_packet(term);
     // auto bla = parse_next_packet(term);
-    fifo.push(std::make_unique<irc_msg>(parse_next_packet(term)));
+    std::lock_guard<std::mutex> lock(quetex);
+    queue.emplace_back(parse_next_packet(term));
     for (auto term = storage.find("\r\n"); term != std::string::npos;
          term = storage.find("\r\n")) {
-      fifo.push(std::make_unique<irc_msg>(parse_next_packet(term)));
+      queue.emplace_back(parse_next_packet(term));
     }
   }
 }
@@ -24,21 +25,13 @@ void protocol::sendircmsg(const std::string &msg) const {
     return;
   socket::send(msg + "\r\n");
 }
-std::unique_ptr<irc_msg> protocol::get_next_irc_msg_ptr() {
-  if (fifo.empty())
-    return std::unique_ptr<irc_msg>(nullptr);
-  return fifo.pop();
+irc_msg protocol::get_next_irc_msg() {
+  std::lock_guard<std::mutex> lock(quetex);
+  irc_msg temp(queue.front());
+  queue.pop_front();
+  return temp;
 }
 
-void protocol::insert_msg_into_queue() {
-  // fifo.emplace(irc_msg(parse_next_packet()));
-  fifo.push(std::make_unique<irc_msg>(parse_next_packet()));
-}
-
-std::string protocol::parse_next_packet() {
-  auto pos = storage.find("\r\n");
-  return parse_next_packet(pos);
-}
 std::string protocol::parse_next_packet(size_t pos) {
   std::string complete_msg = storage.substr(0, pos);
   storage.erase(0, pos + 2);
@@ -49,8 +42,8 @@ protocol::protocol() {}
 const std::string &protocol::get_storage() { return storage; }
 
 bool protocol::msg_queue_empty() const {
-  bool test = fifo.empty();
-  return test;
+  // std::lock_guard<std::mutex> lock(quetex);
+  return queue.empty();
 }
 void protocol::launch_receiving_thread() {
   iothread = std::thread(&protocol::receive_engine, this);
@@ -91,6 +84,7 @@ void protocol::receive_engine() {
       fails++;
     }
   }
+  disconnected = true;
 }
 
 protocol::~protocol() {

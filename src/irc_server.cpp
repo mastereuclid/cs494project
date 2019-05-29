@@ -3,23 +3,23 @@
 // #include "responses.hpp"
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <functional>
 #include <iostream>
-
 #include <mutex>
 #include <sstream>
 
-void sigpipe_handler(int unused) {}
+void sigpipe_handler(int /*unused*/) {}
 using namespace irc::server;
 using guard = std::lock_guard<std::mutex>;
 using nickptr = std::shared_ptr<nick>;
-using msgptr = std::unique_ptr<irc_msg>;
+
 using chanptr = std::unique_ptr<channel>;
 using std::string;
-void no_command_found(nickptr user, msgptr msg);
 void motd(nickptr user);
+void no_command_found(nickptr nickdata, irc_msg msg);
 //////////////////////////set dispatch hooks///////////////////////////
-const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
 dispatch_table();
 //////////////// data structures  //////////////////
 // nicks
@@ -29,9 +29,12 @@ static std::unordered_map<std::string, nickptr> nicks;
 std::mutex chanex;
 static std::map<std::string, chanptr> channels;
 std::atomic<uint> num_in_limbo = 0;
+
+std::mutex qutex;
+std::deque<message> msg_queue;
 // command to function dispatch
 static const std::unordered_map<std::string,
-                                std::function<void(nickptr, msgptr &&)>>
+                                std::function<bool(nickptr, irc_msg)>>
     dispatch = dispatch_table();
 static std::string servername = "server.name";
 ///////////////// thread safe data function //////////////////
@@ -103,15 +106,15 @@ void limbo(socket &&sock) {
         while (!connection->msg_queue_empty() && !success) {
           // get all the messages in the queue. See if they are a NICK or USER
           // silently ignore other types or nicks that are already taken
-          msgptr msg = connection->get_next_irc_msg_ptr();
-          if (msg->command() == command_nick) {
-            if (msg->num_of_params() == 1) {
-              nickname = msg->middleparam().at(0);
+          irc_msg msg = connection->get_next_irc_msg();
+          if (msg.command() == command_nick) {
+            if (msg.num_of_params() == 1) {
+              nickname = msg.middleparam().at(0);
             }
-          } else if (msg->command() == command_user) {
-            if (msg->num_of_params() > 1) {
-              username = msg->middleparam().at(0);
-              realname = msg->data();
+          } else if (msg.command() == command_user) {
+            if (msg.num_of_params() > 1) {
+              username = msg.middleparam().at(0);
+              realname = msg.data();
             }
           }
           if (!nickname.empty() && !username.empty() && !realname.empty()) {
@@ -214,39 +217,45 @@ void server::engine() {
 }
 void server::msg_engine() {
   // std::unique_lock<std::mutex> lock(nickex, std::defer_lock);
-  try {
-    std::cout << "msg engine running" << std::endl;
-    while (running) {
-      // lock.lock();
-      for (auto [nickname, nickdata] : nicks) {
-        try {
-          if (nickdata->msg_queue_empty())
-            continue;
-          // get the msg
-          std::cout << "msg engine found data" << std::endl;
-          msgptr msg = nickdata->get_next_irc_msg_ptr();
-          // is there a dispatch func for the command? if not report an error
-          if (dispatch.count(msg->command()) == 0) {
-            no_command_found(nickdata, std::move(msg));
-          } else {
-            auto commandfunc = dispatch.at(msg->command());
-            commandfunc(nickdata, std::move(msg));
-          }
-        } catch (const send_fail &e) {
-          std::cout << "msg engine exception(i) " << e.errnum() << " :"
-                    << e.what() << std::endl;
-          if (e.errnum() == 32) {
-            nickdata->quit("BROKEN PIPE :-(");
-            // broken pipe: we need to remove user
-          }
+  // try {
+  std::cout << "msg engine running" << std::endl;
+  while (running) {
+    // lock.lock();
+    for (auto &[nickname, nickdata] : nicks) {
+      try {
+        if (!nickdata) {
+          std::cout << "does this fire?\n";
+          break;
+        }
+        if (nickdata->msg_queue_empty())
+          continue;
+        // get the msg
+        // std::cout << "msg engine found data" << std::endl;
+        irc_msg msg = nickdata->get_next_irc_msg();
+        // is there a dispatch func for the command? if not report an error
+        if (dispatch.count(msg.command()) == 0) {
+          no_command_found(nickdata, msg);
+        } else {
+          auto commandfunc = dispatch.at(msg.command());
+          if (commandfunc(nickdata, std::move(msg)))
+            break;
+        }
+      } catch (const send_fail &e) {
+        std::cout << "msg engine exception(i) " << e.errnum() << " :"
+                  << e.what() << std::endl;
+        if (e.errnum() == 32) {
+          nickdata->quit("BROKEN PIPE :-(");
+          // broken pipe: we need to remove user
         }
       }
-      // lock.unlock();
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-  } catch (const std::exception &e) {
-    std::cout << "msg engine exception: " << e.what() << std::endl;
+    // lock.unlock();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
+  // }
+  // catch (const std::exception &e) {
+  //   std::cout << "msg engine exception: " << e.what() << std::endl;
+  // }
   std::cout << "msg engine stopped" << std::endl;
 }
 nick::nick(::socket &&sock) : protocol(std::move(sock)) {}
@@ -265,7 +274,6 @@ void nick::quit(const std::string &quitmsg) {
   for (std::string chan_name : channels) {
     ::channels.at(chan_name)->quit(nickname, quitmsg);
   }
-  auto temp = nicks.extract(nickname);
   // temp destroyed at end of scope.
 }
 
@@ -275,9 +283,9 @@ const string &channel::get_topic() const { return topic; }
 void channel::join(nickptr user) {
   // check if banned or invite only, but I don't think I'm going to do those for
   // now
-  bool oper = false;
-  if (list_of_nicks.size() == 0)
-    oper = true;
+  // bool oper = false;
+  // if (list_of_nicks.size() == 0)
+  // oper = true;
   list_of_nicks.emplace(user->getnickname(), user);
   // broadcast the join
   std::stringstream msg;
@@ -292,31 +300,43 @@ void channel::privmsg(nickptr user, const string &msg) const {
   std::stringstream out;
   out << ":" << user->getnickname() << " PRIVMSG " << chan_name << " :" << msg;
   // broadcast
-  broadcast(out.str());
+  broadcast_except(user, out.str());
 }
 void channel::broadcast(std::string msg) const {
   for (auto &[nickname, user] : list_of_nicks) {
     user->sendircmsg(msg);
   }
 }
-void channel::quit(const std::string &nickname, const std::string &quitmsg) {
-  broadcast(rpl_quit(nickname, quitmsg));
-  remove_nick(nickname);
+void channel::broadcast_except(nickptr from, std::string msg) const {
+  for (auto &[nickname, user] : list_of_nicks) {
+    std::cout << nickname << " ";
+    if (from.get() == user.get())
+      continue;
+    user->sendircmsg(msg);
+    // std::cout << nickname << ": " << msg << std::endl;
+  }
 }
+
+void channel::quit(const std::string &nickname, const std::string &quitmsg) {
+  auto temp = list_of_nicks.extract(nickname);
+  // this way its like broadcast_except
+  broadcast(rpl_quit(nickname, quitmsg));
+  // remove_nick(nickname);
+} // temp dies
 void channel::remove_nick(std::string nickname) {
   auto temp = list_of_nicks.extract(nickname);
   // falls off and dies
 }
 ////////////////////////command to function dispatch///////////////////////////
 
-void join_channel(nickptr user, msgptr msg) {
+bool join_channel(nickptr user, irc_msg msg) {
   // is there a channel specified?
   guard lock(chanex);
-  if (msg->middleparam().size() < 1) {
-    user->sendircmsg(err_NEEDMOREPARAMS(msg->command()));
-    return;
+  if (msg.middleparam().size() < 1) {
+    user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
+    return false;
   }
-  const string &chan_name = msg->middleparam().at(0);
+  const string &chan_name = msg.middleparam().at(0);
   // is there a channel
   if (channels.count(chan_name) > 0) {
     // yes? check if allowed to enter
@@ -329,38 +349,39 @@ void join_channel(nickptr user, msgptr msg) {
     channel &chan = *channels.at(chan_name).get();
     chan.join(user);
   }
+  return false;
 }
 void nick::privmsg(const std::string &from, const std::string &data) const {
   std::stringstream out;
   out << ":" << from << " PRIVMSG " << nickname << " :" << data;
   sendircmsg(out.str());
 }
-void privmsg(nickptr user, msgptr msg) {
+bool privmsg(nickptr user, irc_msg msg) {
   // no destination?
-  if (msg->middleparam().size() == 0) {
+  if (msg.middleparam().size() == 0) {
     // if not report the error
-    user->sendircmsg(err_NEEDMOREPARAMS(msg->command()));
-    return;
+    user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
   }
   // no data?
-  if (msg->data().empty()) {
+  if (msg.data().empty()) {
     user->sendircmsg(err_NOTEXTTOSEND());
   }
   // channel or nick?
-  if (*msg->middleparam().at(0).begin() == '#') {
+  if (*msg.middleparam().at(0).begin() == '#') {
     // msg a channel
     guard lock(chanex);
-    const channel &chan = *channels.at(msg->middleparam().at(0)).get();
-    chan.privmsg(user, msg->data());
+    const channel &chan = *channels.at(msg.middleparam().at(0)).get();
+    chan.privmsg(user, msg.data());
   } else {
     guard lock(nickex);
     // msg a user
-    const nick &user_to = *nicks.at(msg->middleparam().at(0)).get();
-    user_to.privmsg(user->getnickname(), msg->data());
+    const nick &user_to = *nicks.at(msg.middleparam().at(0)).get();
+    user_to.privmsg(user->getnickname(), msg.data());
   }
+  return false;
 }
-void no_command_found(nickptr user, msgptr msg) {
-  user->sendircmsg(err_UNKNOWNCOMMAND(msg->command()));
+void no_command_found(nickptr user, irc_msg msg) {
+  user->sendircmsg(err_UNKNOWNCOMMAND(msg.command()));
 }
 
 void motd(nickptr user) {
@@ -373,12 +394,17 @@ void motd(nickptr user) {
   // user->sendircmsg("375");
 }
 
-void quit(nickptr user, msgptr msg) { user->quit(msg->data()); }
+bool quit(nickptr user, irc_msg msg) {
+  auto temp = nicks.extract(user->getnickname());
+  user->quit(msg.data());
+  user->close();
+  return true;
+}
 
 ///////////////////////dispatch table////////////////////////////////////////
-const std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
 dispatch_table() {
-  std::unordered_map<std::string, std::function<void(nickptr, msgptr &&)>>
+  std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
       dispatch;
   dispatch.emplace("PRIVMSG", privmsg);
 
