@@ -33,3 +33,24 @@ const string rpl_privmsg(const string nickname, const string dest,
   out << ":" << nickname << " " << dest << " :" << msg;
   return out.str();
 }
+
+const string rpl_WHOREPLY(const string channel, const string user,
+                          const string host, const string server,
+                          const string nick, const string realname) {
+  std::stringstream out;
+  out << "352 " << channel << " " << user << " " << host << " " << server << " "
+      << nick << " :" << realname;
+  return out.str();
+}
+const string rpl_ENDOFWHO(const string name) {
+  std::stringstream out;
+  out << "315 " << name << " :END of WHO list";
+  return out.str();
+}
+
+const string rpl_TOPIC(const string server, const string nick,
+                       const string channel, const string topic) {
+  std::stringstream out;
+  out << ":" << server << " 332 " << nick << " " << channel << " :" << topic;
+  return out.str();
+}

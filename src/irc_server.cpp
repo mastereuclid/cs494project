@@ -289,9 +289,22 @@ void channel::join(nickptr user) {
   list_of_nicks.emplace(user->getnickname(), user);
   // broadcast the join
   std::stringstream msg;
-  msg << ":" << user->getnickname() << " JOIN " << chan_name;
+  msg << ":" << user->getnickname() << " JOIN :" << chan_name;
   broadcast(msg.str());
   user->add_channel(chan_name);
+  user->sendircmsg(
+      rpl_TOPIC(servername, user->getnickname(), chan_name, topic));
+  std::stringstream names;
+  names << ":" << servername << " 353 " << user->getnickname() << " = "
+        << chan_name << " :";
+  for (auto &[nickname, anick] : list_of_nicks) {
+    names << nickname << " ";
+  }
+  user->sendircmsg(names.str());
+  std::stringstream end;
+  end << ":" << servername << " 366 " << user->getnickname() << " " << chan_name
+      << " :End of names";
+  user->sendircmsg(end.str());
 }
 void channel::privmsg(nickptr user, const string &msg) const {
   // check if allowed to privmsg
@@ -326,6 +339,14 @@ void channel::quit(const std::string &nickname, const std::string &quitmsg) {
 void channel::remove_nick(std::string nickname) {
   auto temp = list_of_nicks.extract(nickname);
   // falls off and dies
+}
+void channel::who(nickptr user) const {
+  for (auto &[nickname, nickobj] : list_of_nicks) {
+    user->sendircmsg(rpl_WHOREPLY(chan_name, nickobj->getusername(),
+                                  nickobj->hostname(), servername, nickname,
+                                  nickobj->getrealname()));
+  }
+  user->sendircmsg(rpl_ENDOFWHO(chan_name));
 }
 ////////////////////////command to function dispatch///////////////////////////
 
@@ -381,6 +402,7 @@ bool privmsg(nickptr user, irc_msg msg) {
   return false;
 }
 void no_command_found(nickptr user, irc_msg msg) {
+  std::cout << "unknown command: " << msg.line << std::endl;
   user->sendircmsg(err_UNKNOWNCOMMAND(msg.command()));
 }
 
@@ -401,6 +423,20 @@ bool quit(nickptr user, irc_msg msg) {
   return true;
 }
 
+bool who(nickptr user, irc_msg msg) {
+  if (msg.middleparam().size() > 0) {
+    if (channels.count(msg.middleparam().at(0)) > 0) {
+      const channel &chan = *channels.at(msg.middleparam().at(0)).get();
+      chan.who(user);
+    } else {
+      user->sendircmsg(err_NOSUCHCHANNEL(msg.middleparam().at(0)));
+    }
+  } else {
+    user->sendircmsg(err_NEEDMOREPARAMS("WHO"));
+  }
+  return false;
+}
+
 ///////////////////////dispatch table////////////////////////////////////////
 const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
 dispatch_table() {
@@ -410,6 +446,7 @@ dispatch_table() {
 
   dispatch.emplace("JOIN", join_channel);
   dispatch.emplace("QUIT", quit);
+  dispatch.emplace("WHO", who);
   // dispatch.emplace("no_command_found", no_command_found);
   return dispatch;
 }

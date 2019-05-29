@@ -67,6 +67,7 @@ public:
   void join(std::shared_ptr<nick> user);
   void privmsg(std::shared_ptr<nick> user, const std::string &msg) const;
   void quit(const std::string &nickname, const std::string &msg);
+  void who(std::shared_ptr<nick> user) const;
 
 private:
   void remove_nick(std::string nickname);
