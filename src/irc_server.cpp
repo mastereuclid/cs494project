@@ -16,10 +16,10 @@ using nickptr = std::shared_ptr<nick>;
 
 using chanptr = std::unique_ptr<channel>;
 using std::string;
-void no_command_found(nickptr user, irc_msg msg);
 void motd(nickptr user);
+void no_command_found(nickptr nickdata, irc_msg msg);
 //////////////////////////set dispatch hooks///////////////////////////
-const std::unordered_map<std::string, std::function<void(nickptr, irc_msg &&)>>
+const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
 dispatch_table();
 //////////////// data structures  //////////////////
 // nicks
@@ -34,7 +34,7 @@ std::mutex qutex;
 std::deque<message> msg_queue;
 // command to function dispatch
 static const std::unordered_map<std::string,
-                                std::function<void(nickptr, irc_msg &&)>>
+                                std::function<bool(nickptr, irc_msg)>>
     dispatch = dispatch_table();
 static std::string servername = "server.name";
 ///////////////// thread safe data function //////////////////
@@ -234,10 +234,11 @@ void server::msg_engine() {
         irc_msg msg = nickdata->get_next_irc_msg();
         // is there a dispatch func for the command? if not report an error
         if (dispatch.count(msg.command()) == 0) {
-          no_command_found(nickdata, std::move(msg));
+          no_command_found(nickdata, msg);
         } else {
           auto commandfunc = dispatch.at(msg.command());
-          commandfunc(nickdata, std::move(msg));
+          if (commandfunc(nickdata, std::move(msg)))
+            break;
         }
       } catch (const send_fail &e) {
         std::cout << "msg engine exception(i) " << e.errnum() << " :"
@@ -328,12 +329,12 @@ void channel::remove_nick(std::string nickname) {
 }
 ////////////////////////command to function dispatch///////////////////////////
 
-void join_channel(nickptr user, irc_msg msg) {
+bool join_channel(nickptr user, irc_msg msg) {
   // is there a channel specified?
   guard lock(chanex);
   if (msg.middleparam().size() < 1) {
     user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
-    return;
+    return false;
   }
   const string &chan_name = msg.middleparam().at(0);
   // is there a channel
@@ -348,18 +349,18 @@ void join_channel(nickptr user, irc_msg msg) {
     channel &chan = *channels.at(chan_name).get();
     chan.join(user);
   }
+  return false;
 }
 void nick::privmsg(const std::string &from, const std::string &data) const {
   std::stringstream out;
   out << ":" << from << " PRIVMSG " << nickname << " :" << data;
   sendircmsg(out.str());
 }
-void privmsg(nickptr user, irc_msg msg) {
+bool privmsg(nickptr user, irc_msg msg) {
   // no destination?
   if (msg.middleparam().size() == 0) {
     // if not report the error
     user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
-    return;
   }
   // no data?
   if (msg.data().empty()) {
@@ -377,6 +378,7 @@ void privmsg(nickptr user, irc_msg msg) {
     const nick &user_to = *nicks.at(msg.middleparam().at(0)).get();
     user_to.privmsg(user->getnickname(), msg.data());
   }
+  return false;
 }
 void no_command_found(nickptr user, irc_msg msg) {
   user->sendircmsg(err_UNKNOWNCOMMAND(msg.command()));
@@ -392,16 +394,17 @@ void motd(nickptr user) {
   // user->sendircmsg("375");
 }
 
-void quit(nickptr user, irc_msg msg) {
+bool quit(nickptr user, irc_msg msg) {
   auto temp = nicks.extract(user->getnickname());
   user->quit(msg.data());
   user->close();
+  return true;
 }
 
 ///////////////////////dispatch table////////////////////////////////////////
-const std::unordered_map<std::string, std::function<void(nickptr, irc_msg &&)>>
+const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
 dispatch_table() {
-  std::unordered_map<std::string, std::function<void(nickptr, irc_msg &&)>>
+  std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
       dispatch;
   dispatch.emplace("PRIVMSG", privmsg);
 
