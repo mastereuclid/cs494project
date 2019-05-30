@@ -24,7 +24,6 @@ public:
   uint limbo_count() const;
 
 private:
-  void pipesetter() const;
   std::atomic<bool> running = false;
   std::string port = "6667";
   std::thread msg_thread;

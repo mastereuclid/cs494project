@@ -21,6 +21,7 @@ protected:
   int sockfd() const;
 
 private:
+  void static pipesetter();
   socket(int con, std::string &&);
   socket(int con);
   int sock = -1;

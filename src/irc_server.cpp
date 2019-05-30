@@ -1,5 +1,4 @@
 #include "irc_server.hpp"
-#include <signal.h>
 // #include "responses.hpp"
 #include <atomic>
 #include <chrono>
@@ -9,7 +8,6 @@
 #include <mutex>
 #include <sstream>
 
-void sigpipe_handler(int /*unused*/) {}
 using namespace irc::server;
 using guard = std::lock_guard<std::mutex>;
 using nickptr = std::shared_ptr<nick>;
@@ -156,18 +154,9 @@ void limbo(socket &&sock) {
 }
 
 ///////////////////class definitionsm threading/////////////////////////////////
-server::server() { pipesetter(); }
-server::server(std::string name) {
-  servername = name;
-  pipesetter();
-}
-void server::pipesetter() const {
-  struct sigaction act;
-  act.sa_handler = sigpipe_handler;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = 0;
-  sigaction(SIGPIPE, &act, NULL);
-}
+server::server() {}
+server::server(std::string name) { servername = name; }
+
 void server::start_accepting_clients() {
   // accept_thread = std::thread(&server::engine, this);
   running = true;
@@ -175,9 +164,6 @@ void server::start_accepting_clients() {
   msg_thread = std::thread(&server::msg_engine, this);
   std::this_thread::yield();
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  std::unique_lock<std::mutex> lock(awake);
-  // while (!running)
-  // server_up.wait(lock);
 }
 void server::stop_accepting_clients() {
   running = false;
@@ -202,7 +188,15 @@ void server::engine() {
   // std::cout << "omg what is happening\n";
   server_up.notify_all();
   try {
-    listsock.bind(port);
+    for (auto limit =
+             std::chrono::system_clock::now() + std::chrono::seconds(3);
+         std::chrono::system_clock::now() < limit;) {
+      try {
+        listsock.bind(port);
+        break;
+      } catch (const bind_fail &e) {
+      }
+    }
 
     while (running) {
       socket temp = listsock.accept();

@@ -22,7 +22,6 @@ include_directories(headers) #I know this isn't cool anymore....
 
 add_library(catchmain tests/tester.cpp)
 add_library(socket src/socket.cpp)
-
 add_library(irc_server src/irc_server.cpp)
 target_link_libraries(irc_server PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE irc_msg_parser PUBLIC socket PRIVATE protocol PUBLIC responses)
 target_compile_features(irc_server PUBLIC cxx_std_17)

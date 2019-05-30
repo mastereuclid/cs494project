@@ -7,11 +7,27 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+// #include <mutex>
 #include <netdb.h>
+#include <signal.h>
 #include <sys/socket.h>
+void sigpipe_handler(int /*unused*/) {} // this enable broken pipes to become
+// an exception rather than sigpipe which abort the process
 constexpr uint buffer_size = 1024; // A gloabal. Am I insane? Its const...
-socket::socket() {}
-
+socket::socket() {
+  static bool init = true;
+  if (init) {
+    init = false;
+    pipesetter();
+  }
+}
+void socket::pipesetter() {
+  struct sigaction act;
+  act.sa_handler = sigpipe_handler;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+  sigaction(SIGPIPE, &act, NULL);
+}
 void socket::connect(std::string host, std::string port) {
   if (sock != -1)
     throw socket_in_use();
