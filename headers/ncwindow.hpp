@@ -4,14 +4,28 @@
 #include <string>
 #include <vector>
 namespace nc {
+const int button_tab = 9;
+const int button_enter = 10;
 enum class measure_t { absolute, percentage };
 struct points_t {
+  points_t() = default;
+  ~points_t() = default;
+  points_t(const points_t&) = default;
+  points_t(points_t&&) = default;
+  points_t(int ay, int ax, int by, int bx)
+      : topleft_y(ay), topleft_x(ax), bottomright_y(by), bottomright_x(bx) {}
   int topleft_y = 0;
   int topleft_x = 0;
   int bottomright_y = 0;
   int bottomright_x = 0;
 };
 struct border_t {
+  border_t() = default;
+  ~border_t() = default;
+  border_t(const border_t&) = default;
+  border_t(border_t&&) = default;
+  border_t(bool left, bool top, bool bottom, bool right)
+      : left(left), top(top), bottom(bottom), right(right) {}
   bool top = true;
   bool bottom = true;
   bool left = true;
@@ -31,6 +45,8 @@ public:
 protected:
   int last_x() const;
   int last_y() const;
+  WINDOW* winptr() const;
+  border_t bordervalue() const;
 
 private:
   WINDOW* win = nullptr;

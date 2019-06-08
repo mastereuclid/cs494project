@@ -8,10 +8,9 @@ window::window() : stdscreenwowner(true) {
   initscr();
   getmaxyx(stdscr, p.bottomright_y, p.bottomright_x);
 }
-window::window(points_t points, border_t border_arg)
-    : myborder(border_arg), p(points) {
-  win = newwin(p.bottomright_y - p.topleft_y + 1,
-               p.bottomright_x - p.topleft_x + 1, p.topleft_y, p.topleft_x);
+window::window(points_t points, border_t border_arg) : myborder(border_arg), p(points) {
+  win = newwin(p.bottomright_y - p.topleft_y + 1, p.bottomright_x - p.topleft_x + 1, p.topleft_y,
+               p.topleft_x);
   // WINDOW *newwin(int nlines, int ncols, int begin_y, int begin_x);
   getmaxyx(win, max_y, max_x);
   max_x -= 1;
@@ -19,7 +18,7 @@ window::window(points_t points, border_t border_arg)
   drawborder();
   wrefresh(win);
 }
-
+WINDOW* window::winptr() const { return win; }
 void window::drawborder() const {
   if (myborder.bottom) {
     // draw_horizontal_border(p.bottomright_y);
@@ -38,6 +37,7 @@ void window::drawborder() const {
 
 int window::last_x() const { return max_x; }
 int window::last_y() const { return max_y; }
+border_t window::bordervalue() const { return myborder; }
 
 void window::draw_horizontal_border(int y) const {
   for (int loop = 0; loop < p.bottomright_x; loop++) {

@@ -28,8 +28,12 @@ public:
   void draw_list() const;
 
 private:
+  void selector_down();
+  void selector_up();
   std::vector<std::unique_ptr<list_item>> items;
-  std::vector<std::unique_ptr<list_item>>::const_iterator selected =
-      items.cbegin();
+  size_t selected = 0;
+  size_t start = 0;
+  size_t last = 0;
 };
+
 } // namespace nc

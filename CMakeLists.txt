@@ -91,6 +91,12 @@ add_executable(irc_client src/client.cpp)
 target_link_libraries(irc_client PRIVATE protocol PUBLIC ${CURSES_LIBRARIES})
 target_include_directories(irc_client PUBLIC ${CURSES_INCLUDE_DIR})
 
+add_library(chanlist src/chan_list.cpp)
+target_link_libraries(chanlist nclist)
+
+add_executable(chanlisttest tests/chanlisttest.cpp)
+target_link_libraries(chanlisttest PUBLIC catchmain PUBLIC chanlist)
+
 foreach( tester ${TEST_APPS} )
   catch_discover_tests(${tester})
 endforeach()
