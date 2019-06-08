@@ -88,8 +88,7 @@ target_link_libraries(nlist_test PUBLIC nclist PUBLIC catchmain)
 set(TEST_APPS ${TEST_APPS} nlist_test)
 
 add_executable(irc_client src/client.cpp)
-target_link_libraries(irc_client PRIVATE protocol PUBLIC ${CURSES_LIBRARIES})
-target_include_directories(irc_client PUBLIC ${CURSES_INCLUDE_DIR})
+target_link_libraries(irc_client PRIVATE protocol PUBLIC channel_item PRIVATE ${CMAKE_THREAD_LIBS_INIT} )
 
 add_library(chanlist src/chan_list.cpp)
 target_link_libraries(chanlist nclist)
@@ -108,6 +107,9 @@ target_link_libraries(outputwin PUBLIC ncwindow)
 
 add_executable(outwintest tests/outwintest.cpp)
 target_link_libraries(outwintest PUBLIC catchmain PUBLIC outputwin)
+
+add_library(channel_item src/channel_item.cpp)
+target_link_libraries(channel_item PUBLIC chanlist PUBLIC outputwin PUBLIC protocol)
 
 foreach( tester ${TEST_APPS} )
   catch_discover_tests(${tester})

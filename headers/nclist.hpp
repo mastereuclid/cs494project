@@ -23,14 +23,14 @@ public:
   list(points_t points, border_t border);
   void on_focus() override;
   // I need a way to add items
-  void add_item(std::unique_ptr<list_item> item);
+  void add_item(std::shared_ptr<list_item> item);
   void remove_item(const std::string& name);
   void draw_list() const;
 
 private:
   void selector_down();
   void selector_up();
-  std::vector<std::unique_ptr<list_item>> items;
+  std::vector<std::shared_ptr<list_item>> items;
   size_t selected = 0;
   size_t start = 0;
   size_t last = 0;

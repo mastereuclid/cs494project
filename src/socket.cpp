@@ -31,28 +31,26 @@ void socket::pipesetter() {
 void socket::connect(std::string host, std::string port) {
   if (sock != -1)
     throw socket_in_use();
-  addrinfo *address = nullptr;
-  std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> addressptr(nullptr,
-                                                                freeaddrinfo);
+  addrinfo* address = nullptr;
+  std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> addressptr(nullptr, freeaddrinfo);
   addrinfo hints;
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_UNSPEC;     /* Allow IPv4 or IPv6 */
   hints.ai_socktype = SOCK_STREAM; // TCP
   hints.ai_flags = 0;              // FLAGs are always 0
-  hints.ai_protocol = 0; // lets the system choose the most appropraite proto
+  hints.ai_protocol = 0;           // lets the system choose the most appropraite proto
   int error_code = getaddrinfo(host.c_str(), port.c_str(), &hints, &address);
   addressptr.reset(address);
   if (error_code != 0)
     throw could_not_resolve_address();
-  addrinfo *try_this_address = nullptr;
+  addrinfo* try_this_address = nullptr;
   for (try_this_address = address; try_this_address != nullptr;
        try_this_address = try_this_address->ai_next) {
     sock = ::socket(try_this_address->ai_family, try_this_address->ai_socktype,
                     try_this_address->ai_protocol);
     if (sock == -1)
       continue; // try the next address
-    if (::connect(sock, try_this_address->ai_addr,
-                  try_this_address->ai_addrlen) == -1) {
+    if (::connect(sock, try_this_address->ai_addr, try_this_address->ai_addrlen) == -1) {
       ::close(sock);
       continue; // try the next address
     }
@@ -67,21 +65,18 @@ void socket::connect(std::string host, std::string port) {
 }
 void socket::close() {
   if (sock != -1)
-    ::close(sock);
+    ::shutdown(sock, SHUT_RDWR);
   open = false;
   sock = -1;
 }
 socket::~socket() { close(); }
-socket::socket(socket &&other) : sock(other.sock), open(other.open) {
-  other.sock = -1;
-}
+socket::socket(socket&& other) : sock(other.sock), open(other.open) { other.sock = -1; }
 
 void socket::bind(std::string port, std::string host) {
   if (sock != -1)
     throw socket_in_use();
   addrinfo hints, *address = nullptr;
-  std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> addressptr(nullptr,
-                                                                freeaddrinfo);
+  std::unique_ptr<addrinfo, decltype(&freeaddrinfo)> addressptr(nullptr, freeaddrinfo);
   memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = AF_INET; /* Allow IPv4 or IPv6 */
   hints.ai_socktype = SOCK_STREAM;
@@ -91,7 +86,7 @@ void socket::bind(std::string port, std::string host) {
   addressptr.reset(address);
   if (error_code != 0)
     throw addrinfo_fail(gai_strerror(error_code));
-  addrinfo *res = address;
+  addrinfo* res = address;
   int bindrv = 0;
   for (; res != nullptr; res = res->ai_next) {
     sock = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -133,12 +128,17 @@ void socket::send(std::string message) const {
 }
 
 int socket::sockfd() const { return sock; }
+bool socket::isopen() const {
+  if (sock == -1)
+    return false;
+  return true;
+}
 
 std::string socket::receive() const {
   if (sock == -1)
     throw socket_not_open();
   char buffer[buffer_size];
-  int rv = ::recv(sock, &buffer, buffer_size, 0);
+  int rv = ::recv(sock, &buffer, buffer_size, MSG_DONTWAIT);
   if (rv == -1)
     throw receive_fail(strerror(errno), errno);
   else if (rv == 0) {
@@ -157,11 +157,10 @@ class socket socket::accept() const {
   char host[1024];
   char service[20];
 
-  getnameinfo(their_address.get(), sizeof(sockaddr), host, sizeof host, service,
-              sizeof service, 0);
+  getnameinfo(their_address.get(), sizeof(sockaddr), host, sizeof host, service, sizeof service, 0);
   return socket(con, std::string(host));
 }
-const std::string &socket::hostname() const {
+const std::string& socket::hostname() const {
   if (hostname_connected_to.empty()) {
     sockaddr address;
     socklen_t addr_size = sizeof(address);
@@ -176,13 +175,12 @@ const std::string &socket::hostname() const {
 
     // pretend sa is full of good information about the host and port...
 
-    getnameinfo(&address, sizeof address, host, sizeof host, service,
-                sizeof service, 0);
+    getnameinfo(&address, sizeof address, host, sizeof host, service, sizeof service, 0);
     hostname_connected_to = std::string(host);
   }
   return hostname_connected_to;
 }
 
-socket::socket(int con, std::string &&host)
+socket::socket(int con, std::string&& host)
     : sock(con), hostname_connected_to(std::move(host)), open(true) {}
 socket::socket(int con) : sock(con), open(true) {}

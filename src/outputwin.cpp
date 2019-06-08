@@ -7,9 +7,10 @@ outputwin::outputwin()
     : nc::window(nc::points_t(0, 12, getmaxy(stdscr) - 5, getmaxx(stdscr) * (9.0 / 10.0) - 1),
                  nc::border_t(true, false, true, true)) {}
 
-void outputwin::on_focus() { wrefresh(winptr()); }
+void outputwin::on_focus() { draw_output(); }
 
 void outputwin::draw_output() const {
+  drawborder();
   auto iter = lines.rbegin();
   for (int pos = last_y() - 1; pos > 0;) {
     if (iter == lines.rend()) {

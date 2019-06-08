@@ -17,8 +17,7 @@ using std::string;
 void motd(nickptr user);
 void no_command_found(nickptr nickdata, irc_msg msg);
 //////////////////////////set dispatch hooks///////////////////////////
-const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
-dispatch_table();
+const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>> dispatch_table();
 //////////////// data structures  //////////////////
 // nicks
 std::mutex nickex;
@@ -31,9 +30,8 @@ std::atomic<uint> num_in_limbo = 0;
 std::mutex qutex;
 std::deque<message> msg_queue;
 // command to function dispatch
-static const std::unordered_map<std::string,
-                                std::function<bool(nickptr, irc_msg)>>
-    dispatch = dispatch_table();
+static const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>> dispatch =
+    dispatch_table();
 static std::string servername = "server.name";
 ///////////////// thread safe data function //////////////////
 
@@ -64,7 +62,7 @@ bool chan_exist(string chan) {
     return true;
   return false;
 }
-const channel &get_channel(string chan) {
+const channel& get_channel(string chan) {
   guard lock(chanex);
   return *channels.at(chan).get();
 }
@@ -79,7 +77,7 @@ const channel &get_channel(string chan) {
 //   return true;
 // }
 
-void limbo(socket &&sock) {
+void limbo(socket&& sock) {
   try {
     // I need to limit the attempts and time
     num_in_limbo++;
@@ -93,8 +91,7 @@ void limbo(socket &&sock) {
     nickptr connection = std::make_shared<irc::server::nick>(std::move(sock));
     // this loop doesn't check a number of attempts, might add later
     bool success = false;
-    for (auto time_limit =
-             std::chrono::system_clock::now() + std::chrono::seconds(15);
+    for (auto time_limit = std::chrono::system_clock::now() + std::chrono::seconds(15);
          std::chrono::system_clock::now() < time_limit;) {
       // check for incoming
       if (connection->msg_queue_empty()) {
@@ -122,14 +119,14 @@ void limbo(socket &&sock) {
             try {
               std::cout << nickname << std::endl;
               insert_nick(nickname, connection);
-            } catch (const nick_in_use &e) {
+            } catch (const nick_in_use& e) {
               // respond to client
               std::cout << "nickname in use\n";
               connection->sendircmsg(err_NICKNAMEINUSE(nickname));
               // unset nick
               nickname.clear();
               continue;
-            } catch (const std::exception &e) {
+            } catch (const std::exception& e) {
               std::cout << "limbo exception:" << e.what();
             }
             success = true;
@@ -147,7 +144,11 @@ void limbo(socket &&sock) {
       if (success)
         break;
     }
-  } catch (const std::exception &e) {
+    if (!success) {
+      std::cout << "client didn't pass limbo\n";
+      connection->close();
+    }
+  } catch (const std::exception& e) {
     std::cout << "limbo: " << e.what() << std::endl;
   }
   num_in_limbo--;
@@ -170,7 +171,7 @@ void server::stop_accepting_clients() {
   socket temp;
   try {
     temp.connect("localhost", "6667");
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     // do nothing. its fine if the socket fails we just need the engine to
     // unblock
   }
@@ -188,13 +189,12 @@ void server::engine() {
   // std::cout << "omg what is happening\n";
   server_up.notify_all();
   try {
-    for (auto limit =
-             std::chrono::system_clock::now() + std::chrono::seconds(3);
+    for (auto limit = std::chrono::system_clock::now() + std::chrono::seconds(3);
          std::chrono::system_clock::now() < limit;) {
       try {
         listsock.bind(port);
         break;
-      } catch (const bind_fail &e) {
+      } catch (const bind_fail& e) {
       }
     }
 
@@ -204,7 +204,7 @@ void server::engine() {
         // insert_into_pending(std::move(client));
         std::thread(limbo, std::move(temp)).detach();
     }
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
 
     std::cout << "server engine exception: " << e.what();
   }
@@ -215,10 +215,9 @@ void server::msg_engine() {
   std::cout << "msg engine running" << std::endl;
   while (running) {
     // lock.lock();
-    for (auto &[nickname, nickdata] : nicks) {
+    for (auto& [nickname, nickdata] : nicks) {
       try {
         if (!nickdata) {
-          std::cout << "does this fire?\n";
           break;
         }
         if (nickdata->msg_queue_empty())
@@ -234,9 +233,8 @@ void server::msg_engine() {
           if (commandfunc(nickdata, std::move(msg)))
             break;
         }
-      } catch (const send_fail &e) {
-        std::cout << "msg engine exception(i) " << e.errnum() << " :"
-                  << e.what() << std::endl;
+      } catch (const send_fail& e) {
+        std::cout << "msg engine exception(i) " << e.errnum() << " :" << e.what() << std::endl;
         if (e.errnum() == 32) {
           nickdata->quit("BROKEN PIPE :-(");
           // broken pipe: we need to remove user
@@ -252,19 +250,17 @@ void server::msg_engine() {
   // }
   std::cout << "msg engine stopped" << std::endl;
 }
-nick::nick(::socket &&sock) : protocol(std::move(sock)) {}
+nick::nick(::socket&& sock) : protocol(std::move(sock)) {}
 void nick::setnickname(std::string newnick) { nickname = std::move(newnick); }
 void nick::setrealname(std::string newreal) { user = std::move(newreal); }
 void nick::setusername(std::string newuser) { real = std::move(newuser); }
-void nick::add_channel(std::string chan_name) {
-  channels.emplace(std::move(chan_name));
-}
-const std::set<std::string> &nick::list_of_channels() const { return channels; }
-const std::string &nick::getnickname() const { return nickname; }
-const std::string &nick::getrealname() const { return real; }
-const std::string &nick::getusername() const { return user; }
+void nick::add_channel(std::string chan_name) { channels.emplace(std::move(chan_name)); }
+const std::set<std::string>& nick::list_of_channels() const { return channels; }
+const std::string& nick::getnickname() const { return nickname; }
+const std::string& nick::getrealname() const { return real; }
+const std::string& nick::getusername() const { return user; }
 nick::~nick() {}
-void nick::quit(const std::string &quitmsg) {
+void nick::quit(const std::string& quitmsg) {
   for (std::string chan_name : channels) {
     ::channels.at(chan_name)->quit(nickname, quitmsg);
   }
@@ -273,7 +269,7 @@ void nick::quit(const std::string &quitmsg) {
 
 channel::channel(std::string name) : chan_name(std::move(name)) {}
 void channel::set_topic(std::string newtopic) { topic = std::move(newtopic); }
-const string &channel::get_topic() const { return topic; }
+const string& channel::get_topic() const { return topic; }
 void channel::join(nickptr user) {
   // check if banned or invite only, but I don't think I'm going to do those for
   // now
@@ -286,12 +282,10 @@ void channel::join(nickptr user) {
   msg << ":" << user->getnickname() << " JOIN :" << chan_name;
   broadcast(msg.str());
   user->add_channel(chan_name);
-  user->sendircmsg(
-      rpl_TOPIC(servername, user->getnickname(), chan_name, topic));
+  user->sendircmsg(rpl_TOPIC(servername, user->getnickname(), chan_name, topic));
   std::stringstream names;
-  names << ":" << servername << " 353 " << user->getnickname() << " = "
-        << chan_name << " :";
-  for (auto &[nickname, anick] : list_of_nicks) {
+  names << ":" << servername << " 353 " << user->getnickname() << " = " << chan_name << " :";
+  for (auto& [nickname, anick] : list_of_nicks) {
     names << nickname << " ";
   }
   user->sendircmsg(names.str());
@@ -300,7 +294,7 @@ void channel::join(nickptr user) {
       << " :End of names";
   user->sendircmsg(end.str());
 }
-void channel::privmsg(nickptr user, const string &msg) const {
+void channel::privmsg(nickptr user, const string& msg) const {
   // check if allowed to privmsg
 
   // build msg
@@ -310,12 +304,12 @@ void channel::privmsg(nickptr user, const string &msg) const {
   broadcast_except(user, out.str());
 }
 void channel::broadcast(std::string msg) const {
-  for (auto &[nickname, user] : list_of_nicks) {
+  for (auto& [nickname, user] : list_of_nicks) {
     user->sendircmsg(msg);
   }
 }
 void channel::broadcast_except(nickptr from, std::string msg) const {
-  for (auto &[nickname, user] : list_of_nicks) {
+  for (auto& [nickname, user] : list_of_nicks) {
     std::cout << nickname << " ";
     if (from.get() == user.get())
       continue;
@@ -324,7 +318,7 @@ void channel::broadcast_except(nickptr from, std::string msg) const {
   }
 }
 
-void channel::quit(const std::string &nickname, const std::string &quitmsg) {
+void channel::quit(const std::string& nickname, const std::string& quitmsg) {
   auto temp = list_of_nicks.extract(nickname);
   // this way its like broadcast_except
   broadcast(rpl_quit(nickname, quitmsg));
@@ -335,10 +329,9 @@ void channel::remove_nick(std::string nickname) {
   // falls off and dies
 }
 void channel::who(nickptr user) const {
-  for (auto &[nickname, nickobj] : list_of_nicks) {
-    user->sendircmsg(rpl_WHOREPLY(chan_name, nickobj->getusername(),
-                                  nickobj->hostname(), servername, nickname,
-                                  nickobj->getrealname()));
+  for (auto& [nickname, nickobj] : list_of_nicks) {
+    user->sendircmsg(rpl_WHOREPLY(chan_name, nickobj->getusername(), nickobj->hostname(),
+                                  servername, nickname, nickobj->getrealname()));
   }
   user->sendircmsg(rpl_ENDOFWHO(chan_name));
 }
@@ -351,22 +344,22 @@ bool join_channel(nickptr user, irc_msg msg) {
     user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
     return false;
   }
-  const string &chan_name = msg.middleparam().at(0);
+  const string& chan_name = msg.middleparam().at(0);
   // is there a channel
   if (channels.count(chan_name) > 0) {
     // yes? check if allowed to enter
-    channel &chan = *channels.at(chan_name).get();
+    channel& chan = *channels.at(chan_name).get();
     chan.join(user);
   } else {
     // no? create it and enter
     // channels.emplace(msg->middleparam().at(0)), chan_name);
     channels.insert({chan_name, std::make_unique<channel>(chan_name)});
-    channel &chan = *channels.at(chan_name).get();
+    channel& chan = *channels.at(chan_name).get();
     chan.join(user);
   }
   return false;
 }
-void nick::privmsg(const std::string &from, const std::string &data) const {
+void nick::privmsg(const std::string& from, const std::string& data) const {
   std::stringstream out;
   out << ":" << from << " PRIVMSG " << nickname << " :" << data;
   sendircmsg(out.str());
@@ -385,12 +378,12 @@ bool privmsg(nickptr user, irc_msg msg) {
   if (*msg.middleparam().at(0).begin() == '#') {
     // msg a channel
     guard lock(chanex);
-    const channel &chan = *channels.at(msg.middleparam().at(0)).get();
+    const channel& chan = *channels.at(msg.middleparam().at(0)).get();
     chan.privmsg(user, msg.data());
   } else {
     guard lock(nickex);
     // msg a user
-    const nick &user_to = *nicks.at(msg.middleparam().at(0)).get();
+    const nick& user_to = *nicks.at(msg.middleparam().at(0)).get();
     user_to.privmsg(user->getnickname(), msg.data());
   }
   return false;
@@ -402,8 +395,8 @@ void no_command_found(nickptr user, irc_msg msg) {
 
 void motd(nickptr user) {
   std::stringstream welmsg;
-  welmsg << "001 " << user->getnickname() << " :Welcome to " << servername
-         << " " << user->getnickname();
+  welmsg << "001 " << user->getnickname() << " :Welcome to " << servername << " "
+         << user->getnickname();
   user->sendircmsg(welmsg.str());
   welmsg.clear();
   welmsg << ":" << servername << " 375";
@@ -420,7 +413,7 @@ bool quit(nickptr user, irc_msg msg) {
 bool who(nickptr user, irc_msg msg) {
   if (msg.middleparam().size() > 0) {
     if (channels.count(msg.middleparam().at(0)) > 0) {
-      const channel &chan = *channels.at(msg.middleparam().at(0)).get();
+      const channel& chan = *channels.at(msg.middleparam().at(0)).get();
       chan.who(user);
     } else {
       user->sendircmsg(err_NOSUCHCHANNEL(msg.middleparam().at(0)));
@@ -432,10 +425,8 @@ bool who(nickptr user, irc_msg msg) {
 }
 
 ///////////////////////dispatch table////////////////////////////////////////
-const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
-dispatch_table() {
-  std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>>
-      dispatch;
+const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>> dispatch_table() {
+  std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>> dispatch;
   dispatch.emplace("PRIVMSG", privmsg);
 
   dispatch.emplace("JOIN", join_channel);

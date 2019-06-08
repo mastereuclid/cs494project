@@ -58,12 +58,20 @@ void list::draw_list() const {
   // wrefresh(winptr());
 }
 
-void list::add_item(std::unique_ptr<list_item> item) {
+void list::add_item(std::shared_ptr<list_item> item) {
   items.push_back(std::move(item));
-  if (items.size() < last_y()) {
+  if (items.size() < last_y()) { // NOLINT still makes sense with different signs
     last = items.size() - 1;
   }
   // draw_list();
+}
+
+void list::remove_item(const std::string& name) {
+  for (auto item = items.begin(); item != items.end(); item++) {
+    if ((*item)->display_name() == name)
+      items.erase(item);
+    break;
+  } // not efficient
 }
 
 void list::selector_down() {

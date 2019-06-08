@@ -1,7 +1,7 @@
 #include "protocol.hpp"
 using namespace irc;
 #include <iostream>
-void protocol::packet(std::string &&packet) {
+void protocol::packet(std::string&& packet) {
   storage.append(packet);
   // looks for a delimiter
   auto term = storage.find("\r\n");
@@ -14,13 +14,12 @@ void protocol::packet(std::string &&packet) {
     // auto bla = parse_next_packet(term);
     std::lock_guard<std::mutex> lock(quetex);
     queue.emplace_back(parse_next_packet(term));
-    for (auto term = storage.find("\r\n"); term != std::string::npos;
-         term = storage.find("\r\n")) {
+    for (auto term = storage.find("\r\n"); term != std::string::npos; term = storage.find("\r\n")) {
       queue.emplace_back(parse_next_packet(term));
     }
   }
 }
-void protocol::sendircmsg(const std::string &msg) const {
+void protocol::sendircmsg(const std::string& msg) const {
   if (disconnected)
     return;
   socket::send(msg + "\r\n");
@@ -39,7 +38,7 @@ std::string protocol::parse_next_packet(size_t pos) {
 }
 protocol::protocol() {}
 
-const std::string &protocol::get_storage() { return storage; }
+const std::string& protocol::get_storage() { return storage; }
 
 bool protocol::msg_queue_empty() const {
   // std::lock_guard<std::mutex> lock(quetex);
@@ -53,7 +52,10 @@ void protocol::close() {
   socket::close();
 }
 
-protocol::protocol(socket &&sock) : socket(std::move(sock)) {
+protocol::protocol(socket&& sock) : socket(std::move(sock)) { launch_receiving_thread(); }
+
+protocol::protocol(std::string hostname, std::string port) {
+  connect(hostname, port);
   launch_receiving_thread();
 }
 
@@ -67,24 +69,30 @@ void protocol::receive_engine() {
       // packet(std::move(line));
       packet(socket::receive());
 
-    } catch (const receive_fail &e) {
-      std::cout << "protocol engine" << e.errnum() << ": " << e.what()
-                << std::endl;
+    } catch (const receive_fail& e) {
+      if (e.errnum() == 11) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        continue;
+      }
+      std::cout << "protocol engine" << e.errnum() << ": " << e.what() << std::endl;
       disconnected = true;
+      close();
       if (e.errnum() == 104) {
         packet("QUIT :client closed connection\r\n");
       }
     }
 
-    catch (const connection_closed &e) {
+    catch (const connection_closed& e) {
       disconnected = true;
+      close();
 
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       std::cout << "protocol engine: " << e.what() << std::endl;
       fails++;
     }
   }
   disconnected = true;
+  close();
 }
 
 protocol::~protocol() {
