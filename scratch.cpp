@@ -14,8 +14,8 @@ class testclass {
 public:
   testclass() { cout << "testclass constr\n"; }
   ~testclass() { cout << "testclass desctr\n"; }
-  testclass(testclass &&) { cout << "move constr\n"; }
-  testclass(const testclass &) { cout << "copy constr\n"; }
+  testclass(testclass&&) { cout << "move constr\n"; }
+  testclass(const testclass&) { cout << "copy constr\n"; }
 };
 using tptr = unique_ptr<testclass>;
 
@@ -53,8 +53,8 @@ void window_test() {
   refresh();
   int x = 0, y = 0;
   getmaxyx(stdscr, y, x);
-  WINDOW *one = newwin(y, x / 2, 0, 0);
-  WINDOW *two = newwin(y, x / 2, 0, x / 2);
+  WINDOW* one = newwin(y, x / 2, 0, 0);
+  WINDOW* two = newwin(y, x / 2, 0, x / 2);
   std::thread tone([&one]() {
     for (int loop = 0; loop < 20; loop++) {
       mvwaddstr(one, loop, 0, "thread one");
@@ -82,8 +82,15 @@ void basic_hello_window() {
   endwin();
   delwin(stdscr);
 }
+string chartest() {
+  std::string bla;
+  int a = 102;
+  const char b = static_cast<char>(a);
+  bla.append(1, b);
+  return bla;
+}
 int main() {
-  basic_hello_window();
+  cout << chartest() << '\n';
   // ExitProgram();
   // _nc_free_and_exit();
   cout << "main about to pop\n";

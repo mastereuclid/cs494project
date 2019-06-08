@@ -97,6 +97,18 @@ target_link_libraries(chanlist nclist)
 add_executable(chanlisttest tests/chanlisttest.cpp)
 target_link_libraries(chanlisttest PUBLIC catchmain PUBLIC chanlist)
 
+add_library(inputwin src/inputwin.cpp)
+target_link_libraries(inputwin PUBLIC ncwindow)
+
+add_executable(input_test tests/inputtest.cpp)
+target_link_libraries(input_test PUBLIC catchmain PUBLIC inputwin)
+
+add_library(outputwin src/outputwin.cpp)
+target_link_libraries(outputwin PUBLIC ncwindow)
+
+add_executable(outwintest tests/outwintest.cpp)
+target_link_libraries(outwintest PUBLIC catchmain PUBLIC outputwin)
+
 foreach( tester ${TEST_APPS} )
   catch_discover_tests(${tester})
 endforeach()

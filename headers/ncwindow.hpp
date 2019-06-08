@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 namespace nc {
-const int button_tab = 9;
-const int button_enter = 10;
+const int button_tab = 9;    // NOLINT used in other files
+const int button_enter = 10; // NOLINT
 enum class measure_t { absolute, percentage };
 struct points_t {
   points_t() = default;
@@ -26,9 +26,9 @@ struct border_t {
   border_t(border_t&&) = default;
   border_t(bool left, bool top, bool bottom, bool right)
       : left(left), top(top), bottom(bottom), right(right) {}
+  bool left = true;
   bool top = true;
   bool bottom = true;
-  bool left = true;
   bool right = true;
 };
 struct measure {
@@ -41,6 +41,7 @@ public:
   window(points_t points, border_t border);
   ~window();
   virtual void on_focus() = 0;
+  void drawborder() const;
   // virtual void un_focus() = 0;
 protected:
   int last_x() const;
@@ -52,7 +53,6 @@ private:
   WINDOW* win = nullptr;
   int max_y = 0, max_x = 0;
   border_t myborder;
-  void drawborder() const;
   void draw_horizontal_border(int y) const;
   void draw_vertical_border(int x) const;
   bool stdscreenwowner = false;
