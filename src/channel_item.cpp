@@ -11,15 +11,25 @@ void channel_item::on_select() {
   input.on_focus();
   input.get_input([this](std::string line) { process_input(line); });
 }
+void channel_item::add_line(std::string line) { text.add_line(line); }
 
 void channel_item::process_input(std::string line) {
   // if line starts with a slash its a command
+  if (line.size() == 0) {
+    return;
+  }
+  text.add_line(line);
   if (line.at(0) == '/') {
+    text.add_line(line);
     // process as a command
     auto space = line.find_first_of(' ');
-    space--;
+    // space--;
     auto command = line.substr(0, space);
+    // std::stringstream temp;
+    // text.add_line(temp.str());
+    // temp << "command:" << command;
     if (command == std::string("/join")) {
+      text.add_line("join command");
       // omg how am I going to handle this...
       std::stringstream out;
       out << "JOIN " << line.substr(space + 1);

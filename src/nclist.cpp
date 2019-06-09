@@ -36,6 +36,8 @@ void list::on_focus() {
 }
 void list::draw_list() const {
   // is the list empty, smaller than the screen, or larger than the screen
+  if (items.size() == 0)
+    return;
   auto line = 0;
   for (auto row = start; row <= last; row++) {
     auto& item = items.at(row);

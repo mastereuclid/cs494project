@@ -1,7 +1,11 @@
 #include "client.hpp"
+#include "chan_list.hpp"
+#include "channel_item.hpp"
 #include "protocol.hpp"
+#include <atomic>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <ncurses.h>
 #include <sstream>
 #include <thread>
@@ -12,26 +16,50 @@ int main(int argc, char** argv) {
     usage(argv);
     return 1;
   }
+  std::string me = argv[2];
   std::shared_ptr<irc::protocol> conn;
+  std::atomic<bool> running(true);
   try {
-    bool running = true;
     conn = std::make_shared<irc::protocol>(argv[1]);
-    std::stringstream out;
-    out << "NICK " << argv[2] << "\r\n"
-        << "USER a a a :A\r\n";
+  } catch (const std::exception& e) {
+    // endwin();
+    std::cout << e.what() << '\n';
+  }
+  std::stringstream out;
+  out << "NICK " << argv[2] << "\r\n"
+      << "USER a a a :A\r\n";
 
-    conn->send(out.str());
-    // initscr();
+  conn->send(out.str());
+  initscr();
+  chanlist list;
+  std::shared_ptr<nc::list_item> serverwin(new channel_item("server", conn));
+  auto engine = [&list, &serverwin, &running, &conn, &me]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     while (running && conn->isopen()) {
       if (conn->msg_queue_empty()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         continue;
       }
       irc_msg msg = conn->get_next_irc_msg();
-      std::cout << msg.line << std::endl;
+      serverwin->add_line(msg.line);
+      if (msg.command() == std::string("JOIN") && msg.from_nick() == me) {
+        list.add_item(std::shared_ptr<nc::list_item>(new channel_item(msg.data(), conn)));
+      }
     }
-  } catch (const std::exception& e) {
-    // endwin();
-    std::cout << e.what() << '\n';
-  }
+  };
+  auto thread = std::thread(engine);
+  list.add_item(serverwin);
+  list.on_focus();
+  list.draw_list();
+  running = false;
+  serverwin->add_line("test line");
+  serverwin->add_line("test line2");
+  serverwin->add_line("test line");
+  serverwin->add_line("test line2");
+  // serverwin->on_select();
+  // channel_item serverwin("", conn);
+
+  endwin();
+  thread.join();
 }

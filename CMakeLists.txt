@@ -109,7 +109,7 @@ add_executable(outwintest tests/outwintest.cpp)
 target_link_libraries(outwintest PUBLIC catchmain PUBLIC outputwin)
 
 add_library(channel_item src/channel_item.cpp)
-target_link_libraries(channel_item PUBLIC chanlist PUBLIC outputwin PUBLIC protocol)
+target_link_libraries(channel_item PUBLIC chanlist PUBLIC outputwin PUBLIC protocol PUBLIC inputwin)
 
 foreach( tester ${TEST_APPS} )
   catch_discover_tests(${tester})

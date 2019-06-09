@@ -13,6 +13,7 @@ public:
 
 private:
   int draw_string(int y, const std::string& line) const;
+  void clear() const;
   // data structure here for the text
   std::vector<std::string> lines;
 };

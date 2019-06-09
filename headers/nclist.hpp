@@ -11,6 +11,7 @@ public:
   virtual const std::string& display_name() const = 0;
   virtual void on_select() = 0;
   virtual ~list_item() = default;
+  virtual void add_line(std::string line) = 0;
 
 private:
 };

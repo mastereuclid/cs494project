@@ -1,9 +1,13 @@
 #include "inputwin.hpp"
 #include <iostream>
 inputwin::inputwin()
-    : nc::window(nc::points_t(getmaxy(stdscr) - 10, 0, getmaxy(stdscr), getmaxx(stdscr)),
+    : nc::window(nc::points_t(getmaxy(stdscr) - 5, 0, getmaxy(stdscr), getmaxx(stdscr)),
                  nc::border_t(false, true, false, false)) {}
-void inputwin::on_focus() { clear(); }
+void inputwin::on_focus() {
+  clear();
+  echo();
+  wmove(winptr(), 1, 0);
+}
 
 void inputwin::get_input(std::function<void(std::string)> pass_along) const {
   for (int input = wgetch(winptr()); input != nc::button_tab; input = wgetch(winptr())) {

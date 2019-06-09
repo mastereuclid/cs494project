@@ -25,16 +25,16 @@ TEST_CASE("nlist") {
   b.right = true;
   b.top = true;
   nc::list list{p, b};
-  auto a = item("hello");
-  std::unique_ptr<nc::list_item> bla(new item("hello"));
-  list.add_item(std::move(bla));
-  std::unique_ptr<nc::list_item> bla2(new item("hello2"));
-  list.add_item(std::move(bla2));
-  std::unique_ptr<nc::list_item> bla3(new item("hello3"));
-  list.add_item(std::move(bla3));
-  std::unique_ptr<nc::list_item> bla4(new item("hello4"));
-  list.add_item(std::move(bla4));
-  list.draw_list();
-  // refresh();
-  list.on_focus();
+  /*  auto a = item("hello");
+    std::unique_ptr<nc::list_item> bla(new item("hello"));
+    list.add_item(std::move(bla));
+    std::unique_ptr<nc::list_item> bla2(new item("hello2"));
+    list.add_item(std::move(bla2));
+    std::unique_ptr<nc::list_item> bla3(new item("hello3"));
+    list.add_item(std::move(bla3));
+    std::unique_ptr<nc::list_item> bla4(new item("hello4"));
+    list.add_item(std::move(bla4));
+    list.draw_list();
+    // refresh();
+    list.on_focus();*/
 }

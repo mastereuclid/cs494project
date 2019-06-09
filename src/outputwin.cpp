@@ -4,12 +4,23 @@
 #include <ncurses.h>
 #include <thread>
 outputwin::outputwin()
-    : nc::window(nc::points_t(0, 12, getmaxy(stdscr) - 5, getmaxx(stdscr) * (9.0 / 10.0) - 1),
-                 nc::border_t(true, false, true, true)) {}
+    : nc::window(nc::points_t(0, 11, getmaxy(stdscr) - 5, getmaxx(stdscr) * (9.0 / 10.0)),
+                 nc::border_t(true, false, true, true)) {
+  add_line("output window");
+}
 
 void outputwin::on_focus() { draw_output(); }
+void outputwin::clear() const {
+  for (int y = 1; y < last_y(); y++) {
+    for (int x = 1; x < last_x(); x++) {
+      wmove(winptr(), y, x);
+      waddch(winptr(), ' ');
+    }
+  }
+}
 
 void outputwin::draw_output() const {
+  clear();
   drawborder();
   auto iter = lines.rbegin();
   for (int pos = last_y() - 1; pos > 0;) {
@@ -28,6 +39,7 @@ void outputwin::add_line(std::string line) {
   if (lines.size() > 30) {
     lines.erase(lines.begin());
   }
+  draw_output();
 }
 
 int outputwin::draw_string(int y, const std::string& line) const {
