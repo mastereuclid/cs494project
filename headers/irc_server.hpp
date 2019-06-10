@@ -18,8 +18,8 @@ public:
   ~server();
   server();
   server(std::string name);
-  server(server &&) = delete;
-  server(const server &) = delete;
+  server(server&&) = delete;
+  server(const server&) = delete;
   uint conn_count() const;
   uint limbo_count() const;
 
@@ -35,19 +35,19 @@ private:
 };
 class nick : public protocol {
 public:
-  nick(::socket &&);
+  nick(::socket&&);
   ~nick();
   // bool operator<(const nick &other) { return nickname < other.nickname; }
   void setnickname(std::string newnick);
   void setrealname(std::string newreal);
   void setusername(std::string newuser);
-  const std::string &getnickname() const;
-  const std::string &getrealname() const;
-  const std::string &getusername() const;
-  void privmsg(const std::string &from, const std::string &data) const;
+  const std::string& getnickname() const;
+  const std::string& getrealname() const;
+  const std::string& getusername() const;
+  void privmsg(const std::string& from, const std::string& data) const;
   void add_channel(std::string chan_name);
-  const std::set<std::string> &list_of_channels() const;
-  void quit(const std::string &quitmsg);
+  const std::set<std::string>& list_of_channels() const;
+  void quit(const std::string& quitmsg);
 
 private:
   std::string quitmsg = "goodbye forever";
@@ -62,11 +62,12 @@ public:
   channel(std::string name);
   const std::string chan_name;
   void set_topic(std::string);
-  const std::string &get_topic() const;
+  const std::string& get_topic() const;
   void join(std::shared_ptr<nick> user);
-  void privmsg(std::shared_ptr<nick> user, const std::string &msg) const;
-  void quit(const std::string &nickname, const std::string &msg);
+  void privmsg(std::shared_ptr<nick> user, const std::string& msg) const;
+  void quit(const std::string& nickname, const std::string& msg);
   void who(std::shared_ptr<nick> user) const;
+  void part(std::shared_ptr<nick> user, std::string msg);
 
 private:
   void remove_nick(std::string nickname);
@@ -81,9 +82,7 @@ private:
 
 class nick_in_use : public std::exception {
 public:
-  const char *what() const noexcept override {
-    return "nickname is already taken";
-  }
+  const char* what() const noexcept override { return "nickname is already taken"; }
 };
 
 } // namespace irc::server

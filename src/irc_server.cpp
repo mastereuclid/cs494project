@@ -266,6 +266,11 @@ void nick::quit(const std::string& quitmsg) {
   }
   // temp destroyed at end of scope.
 }
+void nick::privmsg(const std::string& from, const std::string& data) const {
+  std::stringstream out;
+  out << ":" << from << " PRIVMSG " << nickname << " :" << data;
+  sendircmsg(out.str());
+}
 
 channel::channel(std::string name) : chan_name(std::move(name)) {}
 void channel::set_topic(std::string newtopic) { topic = std::move(newtopic); }
@@ -335,12 +340,37 @@ void channel::who(nickptr user) const {
   }
   user->sendircmsg(rpl_ENDOFWHO(chan_name));
 }
+void channel::part(nickptr user, std::string msg) {
+  std::stringstream out;
+  out << ":" << user->getnickname() << "!" << user->getusername() << "@" << user->hostname()
+      << " PART " << chan_name << " :" << msg;
+  broadcast(out.str());
+  remove_nick(user->getnickname());
+}
 ////////////////////////command to function dispatch///////////////////////////
+
+bool part_channel(nickptr user, irc_msg msg) {
+  if (msg.middleparam().size() < 1) {
+    user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
+    return false;
+  }
+  if (!chan_exist(msg.middleparam().at(0))) {
+    user->sendircmsg(err_NOSUCHCHANNEL(msg.middleparam().at(0)));
+    return false;
+  }
+  channel& chan = *channels.at(msg.middleparam().at(0)).get();
+  chan.part(user, msg.data());
+  return false;
+}
 
 bool join_channel(nickptr user, irc_msg msg) {
   // is there a channel specified?
   guard lock(chanex);
   if (msg.middleparam().size() < 1) {
+    user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
+    return false;
+  }
+  if (*msg.middleparam().at(0).begin() != '#') {
     user->sendircmsg(err_NEEDMOREPARAMS(msg.command()));
     return false;
   }
@@ -359,11 +389,7 @@ bool join_channel(nickptr user, irc_msg msg) {
   }
   return false;
 }
-void nick::privmsg(const std::string& from, const std::string& data) const {
-  std::stringstream out;
-  out << ":" << from << " PRIVMSG " << nickname << " :" << data;
-  sendircmsg(out.str());
-}
+
 bool privmsg(nickptr user, irc_msg msg) {
   // no destination?
   if (msg.middleparam().size() == 0) {
@@ -432,6 +458,7 @@ const std::unordered_map<std::string, std::function<bool(nickptr, irc_msg)>> dis
   dispatch.emplace("JOIN", join_channel);
   dispatch.emplace("QUIT", quit);
   dispatch.emplace("WHO", who);
+  dispatch.emplace("PART", part_channel);
   // dispatch.emplace("no_command_found", no_command_found);
   return dispatch;
 }

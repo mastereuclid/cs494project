@@ -45,7 +45,7 @@ void channel_item::process_input(std::string line) {
       out << "QUIT " << line.substr(space + 1);
       conn->sendircmsg(out.str());
     }
-  } else {
+  } else if (chan_name != std::string("server")) {
     send(line);
   }
 }

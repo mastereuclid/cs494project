@@ -4,11 +4,14 @@
 #include "protocol.hpp"
 #include <atomic>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <ncurses.h>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 void usage(char** argv) { std::cout << "usage: " << argv[0] << " <server name> <nickname>\n"; }
 
 int main(int argc, char** argv) {
@@ -35,7 +38,7 @@ int main(int argc, char** argv) {
   std::shared_ptr<nc::list_item> serverwin(new channel_item("server", conn));
   auto engine = [&list, &serverwin, &running, &conn, &me]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
+    std::map<const std::string, std::shared_ptr<nc::list_item>> channels;
     while (running && conn->isopen()) {
       if (conn->msg_queue_empty()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -44,7 +47,16 @@ int main(int argc, char** argv) {
       irc_msg msg = conn->get_next_irc_msg();
       serverwin->add_line(msg.line);
       if (msg.command() == std::string("JOIN") && msg.from_nick() == me) {
-        list.add_item(std::shared_ptr<nc::list_item>(new channel_item(msg.data(), conn)));
+        auto chan = std::shared_ptr<nc::list_item>(new channel_item(msg.data(), conn));
+        list.add_item(chan);
+        channels.emplace(chan->display_name(), chan);
+      } else if (msg.command() == std::string("PART") && msg.from_nick() == me) {
+        list.remove_item(msg.middleparam().at(0));
+
+      } else if (msg.command() == std::string("PRIVMSG")) {
+        std::stringstream line;
+        line << "<" << msg.from_nick() << "> " << msg.data();
+        channels.at(msg.middleparam().at(0))->add_line(line.str());
       }
     }
   };
