@@ -46,11 +46,11 @@ add_library(irc_msg_parser src/irc_msg.cpp)
 # target_link_libraries(irc_server_test PRIVATE irc_msg_parser PRIVATE socket PRIVATE irc_server PRIVATE catchmain PUBLIC ${CMAKE_THREAD_LIBS_INIT} PRIVATE responses)
 # SET(TEST_APPS ${TEST_APPS} irc_server_test)
 
-add_library(parser src/parser.cpp)
-target_link_libraries(parser PRIVATE irc_msg PRIVATE socket)
+# add_library(parser src/parser.cpp)
+# target_link_libraries(parser PRIVATE irc_msg PRIVATE socket)
 
 add_library(protocol src/protocol.cpp)
-target_link_libraries(protocol PRIVATE socket PRIVATE irc_msg_parser PRIVATE queue)
+target_link_libraries(protocol PRIVATE socket PRIVATE irc_msg_parser PRIVATE queue PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 
 # add_executable(proto_test tests/protocol_test.cpp)
 # target_link_libraries(proto_test PRIVATE protocol PRIVATE catchmain PRIVATE ${CMAKE_THREAD_LIBS_INIT})
